@@ -9,7 +9,7 @@
     "bull_flag_min_pole_pct": 0.0035,
     "rvol_threshold": 1.5,
     "learned_win_rate_weight": 1.0,
-    "last_calibrated_at": "2026-09-29 23:29:36"
+    "last_calibrated_at": "2026-09-30 00:05:37"
   },
   "BTC-USD": {
     "symbol": "BTC-USD",
@@ -21,7 +21,7 @@
     "bull_flag_min_pole_pct": 0.009,
     "rvol_threshold": 1.81,
     "learned_win_rate_weight": 1.0,
-    "last_calibrated_at": "2026-09-29 23:29:36"
+    "last_calibrated_at": "2026-09-30 00:05:37"
   },
   "GBPUSD=X": {
     "symbol": "GBPUSD=X",

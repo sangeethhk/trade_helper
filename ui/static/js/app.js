@@ -17,6 +17,7 @@ let currentChartTimeframe = null;
 let isUserZoomed = false;
 let currentXRange = null;
 let currentYRange = null;
+let isProgrammaticRelayout = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     initAudioContext();
@@ -441,6 +442,7 @@ function initEventListeners() {
 }
 
 function switchSymbol(symbol) {
+    if (currentSymbol === symbol && currentChartSymbol === symbol) return;
     currentSymbol = symbol;
     document.querySelectorAll(".asset-btn").forEach(b => {
         if (b.dataset.symbol === symbol) {
@@ -453,11 +455,7 @@ function switchSymbol(symbol) {
     currentChartSymbol = null;
     currentXRange = null;
     currentYRange = null;
-    const chartDiv = document.getElementById('plotly-chart');
-    if (chartDiv && chartDiv.layout) {
-        delete chartDiv.layout.xaxis;
-        delete chartDiv.layout.yaxis;
-    }
+    currentAnalysis = null;
     fetchAnalysis(true);
     notifyActiveSymbol();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -625,30 +623,44 @@ function safeFormatDate(ms) {
 function getAutoAlignedRanges(data) {
     if (!data || !data.candles || data.candles.length === 0) return null;
     const candles = data.candles;
-    const lows = candles.map(c => Number(c.low)).filter(v => isFinite(v) && v > 0);
-    const highs = candles.map(c => Number(c.high)).filter(v => isFinite(v) && v > 0);
+    const n = candles.length;
+    
+    // Focus calculation on the visible recent window (last ~50 candles)
+    // so older extreme wicks do not displace or squash the active trading zone!
+    const visibleCount = Math.min(n, 50);
+    const visibleCandles = candles.slice(n - visibleCount);
+    
+    const lows = visibleCandles.map(c => Number(c.low)).filter(v => isFinite(v) && v > 0);
+    const highs = visibleCandles.map(c => Number(c.high)).filter(v => isFinite(v) && v > 0);
     const times = candles.map(c => String(c.timestamp).trim());
 
     if (lows.length === 0 || highs.length === 0 || times.length === 0) return null;
 
     let minY = Math.min(...lows);
     let maxY = Math.max(...highs);
+    
+    // Always include current price in the bounds so it is guaranteed visible
+    const curPx = Number(data.current_price);
+    if (isFinite(curPx) && curPx > 0) {
+        minY = Math.min(minY, curPx);
+        maxY = Math.max(maxY, curPx);
+    }
 
     if (data.detected_pattern) {
         const sl = parseFloat(data.detected_pattern.stop_loss);
         const t2 = parseFloat(data.detected_pattern.target_2);
         const t1 = parseFloat(data.detected_pattern.target_1);
-        const cur = Number(data.current_price || minY);
-        if (isFinite(sl) && sl > 0 && Math.abs(sl - cur) / cur < 0.4) minY = Math.min(minY, sl);
-        if (isFinite(t2) && t2 > 0 && Math.abs(t2 - cur) / cur < 0.4) maxY = Math.max(maxY, t2);
-        if (isFinite(t1) && t1 > 0 && Math.abs(t1 - cur) / cur < 0.4) maxY = Math.max(maxY, t1);
+        const cur = curPx > 0 ? curPx : minY;
+        // Include stop loss and targets if within reasonable distance (within 15% of current price)
+        if (isFinite(sl) && sl > 0 && Math.abs(sl - cur) / cur < 0.15) minY = Math.min(minY, sl);
+        if (isFinite(t2) && t2 > 0 && Math.abs(t2 - cur) / cur < 0.15) maxY = Math.max(maxY, t2);
+        if (isFinite(t1) && t1 > 0 && Math.abs(t1 - cur) / cur < 0.15) maxY = Math.max(maxY, t1);
     }
 
     const ySpan = Math.max(1e-5, maxY - minY);
-    const yPad = ySpan * 0.10;
+    const yPad = ySpan * 0.08; // 8% vertical padding
 
-    const n = times.length;
-    const startIdx = Math.max(0, n - 48);
+    const startIdx = Math.max(0, n - 44);
     const startTime = times[startIdx];
     const lastTime = times[n - 1];
 
@@ -658,7 +670,7 @@ function getAutoAlignedRanges(data) {
     let endTime = lastTime;
     if (tLast && tPrev && tLast > tPrev) {
         const dt = tLast - tPrev;
-        const futureMs = tLast + (8 * dt);
+        const futureMs = tLast + (6 * dt);
         const formattedFuture = safeFormatDate(futureMs);
         if (formattedFuture) {
             endTime = formattedFuture;
@@ -677,7 +689,7 @@ function renderPlotlyChart(data, shouldAutoAlign = false) {
 
     const symbolChanged = (data.symbol !== currentChartSymbol);
     const timeframeChanged = (data.timeframe !== currentChartTimeframe);
-    if (symbolChanged || timeframeChanged) {
+    if (symbolChanged || timeframeChanged || shouldAutoAlign) {
         currentChartSymbol = data.symbol;
         currentChartTimeframe = data.timeframe;
         isUserZoomed = false;
@@ -688,28 +700,23 @@ function renderPlotlyChart(data, shouldAutoAlign = false) {
     const autoBounds = getAutoAlignedRanges(data);
     if (!autoBounds) return;
 
-    if (shouldAutoAlign || !isUserZoomed || !currentXRange || !currentYRange) {
+    if (shouldAutoAlign || symbolChanged || timeframeChanged || !isUserZoomed || !currentXRange || !currentYRange) {
         currentXRange = autoBounds.xRange;
         currentYRange = autoBounds.yRange;
         isUserZoomed = false;
     } else {
-        const chartDiv = document.getElementById('plotly-chart');
-        const full = chartDiv && chartDiv._fullLayout;
-        if (full && full.xaxis && full.yaxis) {
-            const curY = full.yaxis.range;
-            const midY = (curY[0] + curY[1]) / 2.0;
-            const curPx = data.current_price;
-            if (!isFinite(midY) || Math.abs(midY - curPx) / curPx > 0.6) {
+        // If user is zoomed, verify current price is still within a reasonable viewing distance
+        const curPx = Number(data.current_price);
+        const y0 = currentYRange[0];
+        const y1 = currentYRange[1];
+        const span = Math.abs(y1 - y0);
+        if (isFinite(curPx) && span > 0) {
+            if (curPx < (y0 - span * 0.25) || curPx > (y1 + span * 0.25)) {
+                // Price drifted out of zoomed viewport; snap back to auto-bounds
                 currentXRange = autoBounds.xRange;
                 currentYRange = autoBounds.yRange;
                 isUserZoomed = false;
-            } else {
-                currentXRange = [String(full.xaxis.range[0]), String(full.xaxis.range[1])];
-                currentYRange = [Number(curY[0]), Number(curY[1])];
             }
-        } else {
-            currentXRange = autoBounds.xRange;
-            currentYRange = autoBounds.yRange;
         }
     }
 
@@ -858,65 +865,110 @@ function renderPlotlyChart(data, shouldAutoAlign = false) {
             }
         }
 
+        if (pat.pattern_type === "Range / Channel" && pts.support && pts.resistance) {
+            shapes.push({
+                type: 'line',
+                xref: 'paper',
+                x0: 0,
+                x1: 1,
+                y0: pts.resistance,
+                y1: pts.resistance,
+                line: { color: '#f59e0b', width: 1.5, dash: 'dash' }
+            });
+            annotations.push({
+                xref: 'paper',
+                x: 0.05,
+                y: pts.resistance,
+                text: `Res ($${pts.resistance.toFixed(pxDecimals)})`,
+                showarrow: false,
+                font: { color: '#f59e0b', size: 10 },
+                bgcolor: '#451a03'
+            });
+            shapes.push({
+                type: 'line',
+                xref: 'paper',
+                x0: 0,
+                x1: 1,
+                y0: pts.support,
+                y1: pts.support,
+                line: { color: '#06b6d4', width: 1.5, dash: 'dash' }
+            });
+            annotations.push({
+                xref: 'paper',
+                x: 0.05,
+                y: pts.support,
+                text: `Sup ($${pts.support.toFixed(pxDecimals)})`,
+                showarrow: false,
+                font: { color: '#06b6d4', size: 10 },
+                bgcolor: '#083344'
+            });
+        }
+
         // Stop Loss Line
-        shapes.push({
-            type: 'line',
-            xref: 'paper',
-            x0: 0,
-            x1: 1,
-            y0: pat.stop_loss,
-            y1: pat.stop_loss,
-            line: { color: '#ef4444', width: 1.5, dash: 'dash' }
-        });
-        annotations.push({
-            xref: 'paper',
-            x: 0.98,
-            y: pat.stop_loss,
-            text: `Stop ($${pat.stop_loss.toFixed(pxDecimals)})`,
-            showarrow: false,
-            font: { color: '#ef4444', size: 10 },
-            bgcolor: '#450a0a'
-        });
+        if (pat.stop_loss && isFinite(pat.stop_loss)) {
+            shapes.push({
+                type: 'line',
+                xref: 'paper',
+                x0: 0,
+                x1: 1,
+                y0: pat.stop_loss,
+                y1: pat.stop_loss,
+                line: { color: '#ef4444', width: 1.5, dash: 'dash' }
+            });
+            annotations.push({
+                xref: 'paper',
+                x: 0.98,
+                y: pat.stop_loss,
+                text: `Stop ($${pat.stop_loss.toFixed(pxDecimals)})`,
+                showarrow: false,
+                font: { color: '#ef4444', size: 10 },
+                bgcolor: '#450a0a'
+            });
+        }
 
         // Target 1 Line
-        shapes.push({
-            type: 'line',
-            xref: 'paper',
-            x0: 0,
-            x1: 1,
-            y0: pat.target_1,
-            y1: pat.target_1,
-            line: { color: '#10b981', width: 1.5, dash: 'dash' }
-        });
-        annotations.push({
-            xref: 'paper',
-            x: 0.98,
-            y: pat.target_1,
-            text: `T1 (50% Out) ($${pat.target_1.toFixed(pxDecimals)})`,
-            showarrow: false,
-            font: { color: '#10b981', size: 10 },
-            bgcolor: '#064e3b'
-        });
+        if (pat.target_1 && isFinite(pat.target_1)) {
+            shapes.push({
+                type: 'line',
+                xref: 'paper',
+                x0: 0,
+                x1: 1,
+                y0: pat.target_1,
+                y1: pat.target_1,
+                line: { color: '#10b981', width: 1.5, dash: 'dash' }
+            });
+            annotations.push({
+                xref: 'paper',
+                x: 0.98,
+                y: pat.target_1,
+                text: `T1 ($${pat.target_1.toFixed(pxDecimals)})`,
+                showarrow: false,
+                font: { color: '#10b981', size: 10 },
+                bgcolor: '#064e3b'
+            });
+        }
 
         // Target 2 Line
-        shapes.push({
-            type: 'line',
-            xref: 'paper',
-            x0: 0,
-            x1: 1,
-            y0: pat.target_2,
-            y1: pat.target_2,
-            line: { color: '#06b6d4', width: 1.5, dash: 'dot' }
-        });
-        annotations.push({
-            xref: 'paper',
-            x: 0.98,
-            y: pat.target_2,
-            text: `T2 ($${pat.target_2.toFixed(pxDecimals)})`,
-            showarrow: false,
-            font: { color: '#06b6d4', size: 10 },
-            bgcolor: '#083344'
-        });
+        if (pat.target_2 && isFinite(pat.target_2)) {
+            shapes.push({
+                type: 'line',
+                xref: 'paper',
+                x0: 0,
+                x1: 1,
+                y0: pat.target_2,
+                y1: pat.target_2,
+                line: { color: '#06b6d4', width: 1.5, dash: 'dot' }
+            });
+            annotations.push({
+                xref: 'paper',
+                x: 0.98,
+                y: pat.target_2,
+                text: `T2 ($${pat.target_2.toFixed(pxDecimals)})`,
+                showarrow: false,
+                font: { color: '#06b6d4', size: 10 },
+                bgcolor: '#083344'
+            });
+        }
     }
 
     const layout = {
@@ -924,7 +976,7 @@ function renderPlotlyChart(data, shouldAutoAlign = false) {
         showlegend: false,
         paper_bgcolor: '#0b0f19',
         plot_bgcolor: '#0b0f19',
-        margin: { l: 25, r: 70, t: 15, b: 30 },
+        margin: { l: 20, r: 75, t: 15, b: 30 },
         xaxis: {
             type: 'date',
             rangeslider: { visible: false },
@@ -940,7 +992,8 @@ function renderPlotlyChart(data, shouldAutoAlign = false) {
             linecolor: '#1e293b',
             side: 'right',
             range: currentYRange,
-            autorange: false
+            autorange: false,
+            tickformat: data.current_price < 10 ? '.5f' : '.2f'
         },
         shapes: shapes,
         annotations: annotations
@@ -952,7 +1005,9 @@ function renderPlotlyChart(data, shouldAutoAlign = false) {
         displayModeBar: false
     };
 
+    isProgrammaticRelayout = true;
     Plotly.react('plotly-chart', traces, layout, configPlot);
+    setTimeout(() => { isProgrammaticRelayout = false; }, 80);
     attachPlotlyEventListeners();
 }
 
@@ -962,7 +1017,7 @@ function attachPlotlyEventListeners() {
     chartDiv._chartEventsAttached = true;
 
     chartDiv.on('plotly_relayout', (eventData) => {
-        if (!eventData) return;
+        if (!eventData || isProgrammaticRelayout) return;
         if (eventData['xaxis.autorange'] || eventData['yaxis.autorange']) {
             autoAlignChart(true);
             return;
@@ -997,11 +1052,18 @@ function autoAlignChart(force = true) {
     currentXRange = ranges.xRange;
     currentYRange = ranges.yRange;
 
+    isProgrammaticRelayout = true;
     Plotly.relayout('plotly-chart', {
-        'xaxis.range': currentXRange,
-        'yaxis.range': currentYRange,
+        'xaxis.range[0]': currentXRange[0],
+        'xaxis.range[1]': currentXRange[1],
+        'yaxis.range[0]': currentYRange[0],
+        'yaxis.range[1]': currentYRange[1],
         'xaxis.autorange': false,
         'yaxis.autorange': false
+    }).then(() => {
+        setTimeout(() => { isProgrammaticRelayout = false; }, 80);
+    }).catch(() => {
+        isProgrammaticRelayout = false;
     });
 }
 
@@ -1037,11 +1099,18 @@ function zoomInChart() {
     if (s0 && s1) {
         currentXRange = [s0, s1];
         currentYRange = [newY0, newY1];
+        isProgrammaticRelayout = true;
         Plotly.relayout('plotly-chart', {
-            'xaxis.range': currentXRange,
-            'yaxis.range': currentYRange,
+            'xaxis.range[0]': currentXRange[0],
+            'xaxis.range[1]': currentXRange[1],
+            'yaxis.range[0]': currentYRange[0],
+            'yaxis.range[1]': currentYRange[1],
             'xaxis.autorange': false,
             'yaxis.autorange': false
+        }).then(() => {
+            setTimeout(() => { isProgrammaticRelayout = false; }, 80);
+        }).catch(() => {
+            isProgrammaticRelayout = false;
         });
     } else {
         autoAlignChart(true);
@@ -1080,11 +1149,18 @@ function zoomOutChart() {
     if (s0 && s1) {
         currentXRange = [s0, s1];
         currentYRange = [newY0, newY1];
+        isProgrammaticRelayout = true;
         Plotly.relayout('plotly-chart', {
-            'xaxis.range': currentXRange,
-            'yaxis.range': currentYRange,
+            'xaxis.range[0]': currentXRange[0],
+            'xaxis.range[1]': currentXRange[1],
+            'yaxis.range[0]': currentYRange[0],
+            'yaxis.range[1]': currentYRange[1],
             'xaxis.autorange': false,
             'yaxis.autorange': false
+        }).then(() => {
+            setTimeout(() => { isProgrammaticRelayout = false; }, 80);
+        }).catch(() => {
+            isProgrammaticRelayout = false;
         });
     } else {
         autoAlignChart(true);

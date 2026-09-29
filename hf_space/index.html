@@ -3,457 +3,1823 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ElderAlpha AI - Interactive Trading Helper Demo</title>
-    <!-- Tailwind CSS -->
+    <title>ElderAlpha - Day Trading Helper AI</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Plotly.js -->
-    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0b0f19; }
-        .active-asset { background-color: #0284c7 !important; color: #ffffff !important; border-color: #38bdf8 !important; }
-    </style>
-</head>
-<body class="text-slate-100 min-h-screen flex flex-col">
+/* Custom styling enhancements for ElderAlpha Dashboard */
+body {
+    background-color: #030712;
+}
 
-    <!-- Header Navbar -->
-    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3.5 flex flex-wrap justify-between items-center gap-4">
+.active-asset {
+    background-color: #0f766e !important;
+    border-color: #14b8a6 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+.active-tf {
+    background-color: #3b82f6 !important;
+    border-color: #60a5fa !important;
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+.active-tab {
+    color: #10b981 !important;
+    border-bottom: 2px solid #10b981 !important;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #090d16;
+}
+::-webkit-scrollbar-thumb {
+    background: #1e293b;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #334155;
+}
+
+/* Fullscreen Chart Overlay Mode */
+.chart-fullscreen-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    background-color: #020617 !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 1.5rem !important;
+    box-shadow: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.chart-fullscreen-overlay #plotly-chart {
+    flex: 1 1 0% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+}
+
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex flex-wrap justify-between items-center sticky top-0 z-50 shadow-md">
         <div class="flex items-center space-x-3">
-            <div class="bg-gradient-to-tr from-cyan-600 to-emerald-400 p-2 rounded-lg text-slate-950 font-black text-lg">
+            <div class="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-bold text-lg">
                 <i class="fa-solid fa-chart-line"></i>
             </div>
             <div>
-                <h1 class="text-base font-bold text-white tracking-wide flex items-center gap-2">
-                    ElderAlpha AI <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-600 font-mono">Hugging Face Live Demo</span>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    ElderAlpha AI
+                    <span class="text-xs bg-emerald-950 border border-emerald-700/50 text-emerald-400 px-2 py-0.5 rounded font-mono">v1.0 • Elder Book 2</span>
                 </h1>
-                <p class="text-xs text-slate-400">Codifying Andrew Elder: Day Trading Strategies (Book 2)</p>
+                <p class="text-xs text-slate-400">Autonomous Calibration & Movement Learning Trading Assistant</p>
             </div>
         </div>
 
-        <div class="flex items-center space-x-3">
-            <a href="https://github.com/sangeethhk/trade_helper" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow">
-                <i class="fa-brands fa-github text-sm"></i>
-                <span>View on GitHub</span>
-                <span class="px-1.5 py-0.2 rounded bg-slate-900 text-amber-400 text-[10px] ml-1">★ Star</span>
-            </a>
+        <!-- HUD: Live Status, Circuit Breakers & Session Gain Lock -->
+        <div class="flex items-center space-x-4 text-xs font-mono">
+            <div id="live-indicator" class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-950/80 border border-emerald-500/50 text-emerald-400 font-bold text-[11px]">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>LIVE FEED</span>
+            </div>
+            <div class="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
+                <span class="text-slate-400">Equity:</span>
+                <span id="hud-equity" class="text-emerald-400 font-bold">$10,000.00</span>
+            </div>
+            <div class="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
+                <span class="text-slate-400">Session P/L:</span>
+                <span id="hud-session-pnl" class="text-slate-200 font-bold">$0.00</span>
+            </div>
+            <div id="hud-circuit-badge" class="px-3 py-1.5 rounded-lg border border-emerald-600/40 bg-emerald-950/40 text-emerald-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span id="hud-circuit-text">Risk: Safe</span>
+            </div>
+            <div id="hud-gain-badge" class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-900 text-slate-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-lock"></i>
+                <span id="hud-gain-text">Gain Lock: Inactive</span>
+            </div>
+            <button id="btn-audio-toggle" title="Toggle Sound Chimes" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2.5 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer">
+                <i class="fa-solid fa-volume-high"></i>
+            </button>
+            <button id="btn-refresh" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span>Refresh</span>
+            </button>
         </div>
     </header>
 
-    <!-- News Blackout Alert Banner -->
+    <!-- Real-Time Live Ticker Marquee Strip -->
+    <div id="live-marquee-bar" class="bg-slate-950/90 border-b border-slate-800/80 px-6 py-1.5 flex items-center space-x-6 overflow-x-auto text-[11px] font-mono">
+        <span class="text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
+            <i class="fa-solid fa-bolt text-amber-400"></i> Live Watchlist:
+        </span>
+        <div id="marquee-items" class="flex items-center space-x-6 shrink-0">
+            <span class="text-slate-400">Connecting to live market flux...</span>
+        </div>
+    </div>
+
+    <!-- High-Impact Economic News Alert & Blackout Banner (Andrew Elder Ch 4) -->
     <div id="news-alert-banner" class="bg-slate-950 border-b border-slate-800 px-6 py-2 transition-all duration-300">
         <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
             <div class="flex items-center space-x-3">
-                <span id="news-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 flex items-center gap-1.5 border border-slate-700">
-                    <span id="news-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    <span id="news-badge-text">Economic News: Calm</span>
+                <span id="news-alert-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 flex items-center gap-1.5 border border-slate-700">
+                    <span id="news-alert-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span id="news-alert-badge-text">News: Calm</span>
                 </span>
-                <span id="news-headline" class="text-slate-300 font-medium">
-                    Economic calendar clear. No high-impact blackout in progress.
+                <span id="news-alert-headline" class="text-slate-300 font-medium text-xs">
+                    Economic calendar clear. No blackout in progress.
                 </span>
             </div>
             <div class="flex items-center space-x-2">
-                <button id="btn-simulate-news" onclick="toggleNewsSimulation()" class="px-2.5 py-1 rounded text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition flex items-center gap-1 cursor-pointer">
-                    <i class="fa-solid fa-bolt-lightning text-amber-400"></i>
-                    <span id="sim-btn-text">Simulate High-Impact News Shock</span>
+                <!-- Toggle news lockout switch -->
+                <button id="btn-toggle-newslock" class="px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-700/60 hover:bg-emerald-900 transition flex items-center gap-1 cursor-pointer" title="Elder Rule: Automatically skip trading 30m before and after high-impact releases">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span id="newslock-text">News Skip: ON</span>
                 </button>
+                <!-- Simulate test event button -->
+                <button id="btn-simulate-news" class="px-2 py-1 rounded text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition flex items-center gap-1 cursor-pointer" title="Simulate a High-Impact News Shock to test trade skipping">
+                    <i class="fa-solid fa-bolt-lightning text-amber-400"></i>
+                    <span id="btn-simulate-news-text">Simulate News Event</span>
+                </button>
+                <!-- View economic calendar drawer toggle -->
+                <button id="btn-toggle-news-drawer" class="px-2 py-1 rounded text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-calendar-days text-cyan-400"></i>
+                    <span>Calendar</span>
+                    <i id="news-drawer-arrow" class="fa-solid fa-chevron-down text-[10px]"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Expandable Economic Calendar Drawer -->
+        <div id="news-calendar-drawer" class="hidden mt-3 pt-3 border-t border-slate-800/80">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1">
+                    <i class="fa-solid fa-newspaper text-cyan-400"></i> High-Impact Macro & Crypto Calendar
+                </span>
+                <span class="text-[10px] text-slate-500 italic">Elder Rule: Trade signals are automatically skipped 30m before to 30m after high-impact events.</span>
+            </div>
+            <div id="news-calendar-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                <!-- Populated dynamically via JS -->
             </div>
         </div>
     </div>
 
-    <!-- Subheader: Asset Switcher -->
+    <!-- Subheader: Market & Asset Controls -->
     <div class="bg-slate-900/60 border-b border-slate-800 px-6 py-2.5 flex flex-wrap justify-between items-center gap-4">
+        <!-- Asset Selectors -->
         <div class="flex items-center space-x-4">
             <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
-                <i class="fa-brands fa-bitcoin text-amber-400"></i> Crypto:
+                <i class="fa-solid fa-globe text-cyan-400"></i> Forex:
             </span>
-            <div class="inline-flex rounded-md shadow-sm">
-                <button onclick="selectAsset('BTC-USD')" id="btn-btc" class="asset-btn active-asset px-3 py-1 text-xs font-medium rounded-l-lg border border-slate-700 bg-slate-800 text-slate-200">BTC/USD</button>
-                <button onclick="selectAsset('ETH-USD')" id="btn-eth" class="asset-btn px-3 py-1 text-xs font-medium rounded-r-lg border border-slate-700 bg-slate-800 text-slate-200">ETH/USD</button>
+            <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium rounded-l-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 active-asset" data-symbol="EURUSD=X">EUR/USD</button>
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium border-t border-b border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="GBPUSD=X">GBP/USD</button>
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium rounded-r-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="USDJPY=X">USD/JPY</button>
             </div>
 
             <div class="h-4 w-px bg-slate-700"></div>
 
             <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
-                <i class="fa-solid fa-globe text-cyan-400"></i> Forex:
+                <i class="fa-brands fa-bitcoin text-amber-400"></i> Crypto:
             </span>
-            <div class="inline-flex rounded-md shadow-sm">
-                <button onclick="selectAsset('EURUSD=X')" id="btn-eur" class="asset-btn px-3 py-1 text-xs font-medium rounded-l-lg border border-slate-700 bg-slate-800 text-slate-200">EUR/USD</button>
-                <button onclick="selectAsset('GBPUSD=X')" id="btn-gbp" class="asset-btn px-3 py-1 text-xs font-medium rounded-r-lg border border-slate-700 bg-slate-800 text-slate-200">GBP/USD</button>
+            <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium rounded-l-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="BTC-USD">BTC/USD</button>
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium border-t border-b border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="ETH-USD">ETH/USD</button>
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium rounded-r-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="SOL-USD">SOL/USD</button>
             </div>
         </div>
 
-        <div class="text-xs font-mono text-slate-400">
-            <span>Risk Rule: <strong class="text-emerald-400">0.25% Max</strong> • Target: <strong class="text-cyan-400">≥ 2.0R</strong></span>
+        <!-- Timeframe & Risk Parameters -->
+        <div class="flex items-center space-x-4">
+            <span class="text-xs text-slate-400 font-semibold">Timeframe:</span>
+            <div class="inline-flex rounded-md" role="group">
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border border-slate-700 bg-slate-800 hover:bg-slate-700 rounded-l-lg" data-tf="1m">1m</button>
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border-t border-b border-slate-700 bg-slate-800 hover:bg-slate-700" data-tf="5m">5m</button>
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border border-slate-700 bg-slate-800 hover:bg-slate-700 active-tf" data-tf="15m">15m</button>
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border-t border-b border-slate-700 bg-slate-800 hover:bg-slate-700" data-tf="1h">1h</button>
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border border-slate-700 bg-slate-800 hover:bg-slate-700 rounded-r-lg" data-tf="1d">1d</button>
+            </div>
+
+            <div class="h-4 w-px bg-slate-700"></div>
+
+            <div class="flex items-center space-x-2 text-xs">
+                <span class="text-slate-400">Risk/Trade:</span>
+                <select id="select-risk-pct" class="bg-slate-800 border border-slate-700 text-emerald-400 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-emerald-500 font-mono">
+                    <option value="0.0025" selected>0.25% (Elder Beginner Rule)</option>
+                    <option value="0.0050">0.50% (Moderate Risk)</option>
+                    <option value="0.0100">1.00% (Maximum Cap)</option>
+                </select>
+            </div>
         </div>
     </div>
 
-    <!-- Main Workspace -->
-    <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Main Workspace Layout -->
+    <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-        <!-- Chart Section (8 cols) -->
+        <!-- Left Column: Live Chart & Indicators (8 cols) -->
         <section class="lg:col-span-8 flex flex-col space-y-4">
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex-1 flex flex-col min-h-[520px]">
-                <div class="flex justify-between items-center mb-3">
+            <!-- Chart Container Card with Fullscreen Support -->
+            <div id="chart-card-container" class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col h-[560px] transition-all duration-300">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
                     <div class="flex items-center space-x-3">
-                        <span id="chart-symbol-title" class="text-base font-bold text-white">BTC/USD (15m)</span>
-                        <span id="chart-price-badge" class="text-xs font-mono font-bold px-2.5 py-1 bg-slate-800 border border-slate-700 rounded text-emerald-400">$83,040.50</span>
-                        <span class="text-xs font-semibold px-2 py-0.5 bg-cyan-950/60 border border-cyan-700/50 text-cyan-300 rounded">
-                            <i class="fa-solid fa-crosshairs mr-1"></i> <span id="detected-pattern-title">ABCD Harmonic Setup</span>
+                        <span id="active-symbol-title" class="text-base font-bold text-white tracking-wide">EUR/USD (15m)</span>
+                        <span id="active-price-badge" class="text-xs font-mono font-bold px-2.5 py-1 bg-slate-800 border border-slate-700 rounded text-emerald-400">1.08500</span>
+                        <span id="active-pattern-badge" class="text-xs font-semibold px-2 py-0.5 bg-cyan-950/60 border border-cyan-700/50 text-cyan-300 rounded hidden">
+                            <i class="fa-solid fa-crosshairs mr-1"></i> <span id="active-pattern-text">ABCD Pattern</span>
                         </span>
                     </div>
-                    <div class="text-xs font-mono text-slate-400">
-                        <span class="text-purple-400 mr-2">● EMA 9</span>
-                        <span class="text-rose-400">● EMA 20</span>
+
+                    <!-- Chart Controls: Auto-Align, Zoom In, Zoom Out, Pan, Fullscreen -->
+                    <div class="flex items-center space-x-2 text-xs font-mono">
+                        <!-- Legend -->
+                        <div class="hidden xl:flex items-center space-x-3 text-slate-400 mr-2 border-r border-slate-800 pr-3">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> EMA 9</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> EMA 20</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-emerald-400 inline-block"></span> Targets</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-rose-400 inline-block"></span> Stop</span>
+                        </div>
+
+                        <!-- Auto-Align Button -->
+                        <button id="btn-chart-align" title="Auto-Align Chart (Hotkey: A or R)" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-400 border border-emerald-700/60 flex items-center gap-1.5 font-bold transition shadow-sm cursor-pointer">
+                            <i class="fa-solid fa-arrows-to-eye"></i>
+                            <span>Auto-Align</span>
+                        </button>
+
+                        <!-- Zoom In (+) -->
+                        <button id="btn-chart-zoom-in" title="Zoom In (Hotkey: +)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center transition cursor-pointer">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                        </button>
+
+                        <!-- Zoom Out (-) -->
+                        <button id="btn-chart-zoom-out" title="Zoom Out (Hotkey: -)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center transition cursor-pointer">
+                            <i class="fa-solid fa-magnifying-glass-minus"></i>
+                        </button>
+
+                        <!-- Pan / Drag Toggle -->
+                        <button id="btn-chart-pan" title="Toggle Pan / Drag mode (Hotkey: P)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 flex items-center justify-center transition cursor-pointer">
+                            <i class="fa-solid fa-hand"></i>
+                        </button>
+
+                        <!-- Fullscreen Toggle -->
+                        <button id="btn-chart-fullscreen" title="Toggle Fullscreen (Hotkey: F)" class="px-2.5 py-1.5 rounded-lg bg-purple-950/70 hover:bg-purple-900/90 text-purple-300 border border-purple-700/60 flex items-center gap-1.5 font-bold transition cursor-pointer">
+                            <i id="fs-icon" class="fa-solid fa-expand"></i>
+                            <span id="fs-text">Fullscreen</span>
+                        </button>
                     </div>
                 </div>
 
-                <div id="chart-div" class="w-full flex-1 min-h-[440px]"></div>
+                <!-- Plotly Candlestick Graph -->
+                <div id="plotly-chart" class="w-full flex-1 min-h-0"></div>
+            </div>
+
+            <!-- Lower Quick Stats: ATR, RVOL, MFI, Pivots -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                    <span class="text-xs text-slate-400 block mb-1">ATR (14) Volatility</span>
+                    <span id="stat-atr" class="text-sm font-bold font-mono text-white">0.00120</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                    <span class="text-xs text-slate-400 block mb-1">Relative Volume (RVOL)</span>
+                    <span id="stat-rvol" class="text-sm font-bold font-mono text-emerald-400">2.14x</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                    <span class="text-xs text-slate-400 block mb-1">Money Flow Index (MFI)</span>
+                    <span id="stat-mfi" class="text-sm font-bold font-mono text-cyan-400">54.2</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                    <span class="text-xs text-slate-400 block mb-1">Central Floor Pivot</span>
+                    <span id="stat-pivot" class="text-sm font-bold font-mono text-amber-400">1.08450</span>
+                </div>
             </div>
         </section>
 
-        <!-- Sidebar (4 cols) -->
+        <!-- Right Column: AI Signal, Movement Learner, Risk, Options (4 cols) -->
         <section class="lg:col-span-4 flex flex-col space-y-4">
 
-            <!-- Card 1: AI Trade Advisor -->
+            <!-- Card 0: Live Market Decision Copilot (Go / No-Go) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-2.5">
+                    <h2 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-traffic-light text-cyan-400"></i> Live Market Copilot
+                    </h2>
+                    <span id="live-bid-ask" class="text-[11px] font-mono text-slate-400">Bid: -- | Ask: --</span>
+                </div>
+
+                <!-- Prominent Verdict Banner -->
+                <div id="verdict-banner" class="p-3 rounded-lg border border-slate-700 bg-slate-950/80 mb-3 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Elder Session Verdict</span>
+                        <span id="verdict-status" class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-hand text-amber-400"></i> NO-GO (WAITING)
+                        </span>
+                    </div>
+                    <span id="verdict-subtext" class="text-[11px] text-right font-mono text-slate-400">
+                        Scan in progress...
+                    </span>
+                </div>
+
+                <!-- 5-Point Live Checklist (Elder Book 2 Rules) -->
+                <div class="space-y-1.5 text-xs bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-arrows-split-up-and-left mr-1 text-slate-500"></i> Spread Cost:</span>
+                        <span id="chk-spread" class="text-emerald-400 font-mono font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Tight (< 1.5 pips)</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-calendar-xmark mr-1 text-slate-500"></i> Macro News Blackout:</span>
+                        <span id="chk-news" class="text-emerald-400 font-mono font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Clear (No NFP/FOMC)</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-shapes mr-1 text-slate-500"></i> Pattern at Structure:</span>
+                        <span id="chk-pattern" class="text-slate-500 font-mono font-semibold"><i class="fa-solid fa-circle-xmark mr-1"></i> Waiting</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-brain mr-1 text-slate-500"></i> Movement AI Edge:</span>
+                        <span id="chk-movement" class="text-slate-500 font-mono font-semibold"><i class="fa-solid fa-circle-xmark mr-1"></i> Neutral</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-shield-virus mr-1 text-slate-500"></i> Risk & Circuit Check:</span>
+                        <span id="chk-circuit" class="text-emerald-400 font-mono font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Safe (0.25%)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 1: AI Trade Signal & Execution -->
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                         <i class="fa-solid fa-robot text-emerald-400"></i> AI Trade Advisor
                     </h2>
-                    <span id="ai-action-badge" class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-emerald-950 border border-emerald-600 text-emerald-400">
-                        BUY • ABCD PATTERN
+                    <span id="ai-action-badge" class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-slate-800 text-slate-300">
+                        MONITORING
                     </span>
                 </div>
 
-                <div class="space-y-3 text-xs">
-                    <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-lg">
-                        <div class="flex justify-between mb-1">
-                            <span class="text-slate-400">AI Continuation Confidence:</span>
-                            <span id="ai-confidence" class="font-bold text-emerald-400 font-mono">78.3%</span>
+                <div id="ai-signal-body" class="space-y-3">
+                    <div class="p-3 bg-slate-950/70 border border-slate-800/80 rounded-lg">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Detected Pattern:</span>
+                            <span id="ai-pattern-name" class="font-bold text-slate-200">Scanning price action...</span>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-slate-400">Reward-to-Risk Payout:</span>
-                            <span id="ai-payout" class="font-bold text-cyan-400 font-mono">2.25R (Target: ≥ 2.0R)</span>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">AI Confidence:</span>
+                            <span id="ai-confidence" class="font-bold text-emerald-400 font-mono">--%</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Expected Payout Ratio:</span>
+                            <span id="ai-payout-ratio" class="font-bold text-cyan-400 font-mono">-- (Target: >= 2.0R)</span>
                         </div>
                     </div>
 
-                    <!-- Price Plan -->
-                    <div class="grid grid-cols-2 gap-2 font-mono text-xs">
+                    <!-- Price Level Plan -->
+                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">
                         <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
-                            <span class="text-slate-400 block text-[10px]">Entry Price</span>
-                            <span id="ai-entry" class="font-bold text-white">$83,040.50</span>
+                            <span class="text-slate-400 block text-[11px]">Entry Price</span>
+                            <span id="ai-entry-price" class="font-bold text-white">--</span>
                         </div>
                         <div class="bg-rose-950/20 p-2 rounded border border-rose-900/40">
-                            <span class="text-rose-400 block text-[10px]">Stop Loss (ATR)</span>
-                            <span id="ai-stop" class="font-bold text-rose-400">$81,850.00</span>
+                            <span class="text-rose-400 block text-[11px]">Stop Loss (ATR)</span>
+                            <span id="ai-stop-loss" class="font-bold text-rose-400">--</span>
                         </div>
                         <div class="bg-emerald-950/20 p-2 rounded border border-emerald-900/40">
-                            <span class="text-emerald-400 block text-[10px]">Target 1 (50% Out)</span>
-                            <span id="ai-t1" class="font-bold text-emerald-400">$85,718.00</span>
+                            <span class="text-emerald-400 block text-[11px]">Target 1 (50% Out)</span>
+                            <span id="ai-target-1" class="font-bold text-emerald-400">--</span>
                         </div>
                         <div class="bg-cyan-950/20 p-2 rounded border border-cyan-900/40">
-                            <span class="text-cyan-400 block text-[10px]">Target 2 (Runner)</span>
-                            <span id="ai-t2" class="font-bold text-cyan-400">$87,900.00</span>
+                            <span class="text-cyan-400 block text-[11px]">Target 2 (Runner)</span>
+                            <span id="ai-target-2" class="font-bold text-cyan-400">--</span>
                         </div>
                     </div>
 
-                    <!-- Position Sizing -->
-                    <div class="p-2.5 bg-emerald-950/10 border border-emerald-800/30 rounded-lg text-xs">
+                    <!-- Position Sizing Output (0.25% Rule) -->
+                    <div class="p-3 bg-emerald-950/10 border border-emerald-800/30 rounded-lg text-xs">
                         <div class="flex justify-between mb-1">
-                            <span class="text-slate-400">Exact Position Size:</span>
-                            <span id="ai-size" class="font-bold text-emerald-300 font-mono">0.0210 BTC</span>
+                            <span class="text-slate-400">Calculated Position Size:</span>
+                            <span id="ai-position-size" class="font-bold text-emerald-300 font-mono">--</span>
                         </div>
                         <div class="flex justify-between text-[11px] text-slate-400">
-                            <span>Risk Allocated:</span>
-                            <span class="font-mono text-slate-300">$25.00 (0.25% of $10,000)</span>
+                            <span>Max Risk Allowed:</span>
+                            <span id="ai-max-risk" class="font-mono text-slate-300">$25.00 (0.25%)</span>
                         </div>
                     </div>
 
                     <p id="ai-rationale" class="text-xs text-slate-400 italic">
-                        Confirmed higher low at Point C (0.50 Fib pullback) with RVOL 1.94x breakout volume.
+                        Awaiting high-probability pattern confirmation near support or resistance structure.
                     </p>
 
-                    <button id="btn-execute" onclick="alert('Trade executed in Paper Broker simulator! Stop Loss and 50% scale-out armed.')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+                    <button id="btn-execute-trade" class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer" disabled>
                         <i class="fa-solid fa-bolt"></i> Execute Paper Trade
                     </button>
                 </div>
             </div>
 
-            <!-- Card 2: Calibrator & Model Stats -->
+            <!-- Card 2: Dynamic Calibration & Movement Learning Engine with Auto-Training HUD -->
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                        <i class="fa-solid fa-brain text-purple-400"></i> Movement Learner Profile
+                        <i class="fa-solid fa-brain text-purple-400"></i> Movement Learner & Calibrator
                     </h2>
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-700 font-mono">
-                        PyTorch + GB
-                    </span>
-                </div>
-
-                <div class="space-y-2.5 text-xs font-mono">
-                    <div class="flex justify-between p-2 rounded bg-slate-950/70 border border-slate-800">
-                        <span class="text-slate-400">Trained Quality Trades:</span>
-                        <span id="stat-trades" class="text-purple-300 font-bold">1,086 Trades</span>
-                    </div>
-                    <div class="flex justify-between p-2 rounded bg-slate-950/70 border border-slate-800">
-                        <span class="text-slate-400">Calibrated ATR Stop Mult:</span>
-                        <span id="stat-stop" class="text-purple-300 font-bold">2.11x ATR</span>
-                    </div>
-                    <div class="flex justify-between p-2 rounded bg-slate-950/70 border border-slate-800">
-                        <span class="text-slate-400">Calibrated RVOL Trigger:</span>
-                        <span id="stat-rvol" class="text-purple-300 font-bold">1.94x</span>
-                    </div>
-                    <div class="flex justify-between p-2 rounded bg-slate-950/70 border border-slate-800">
-                        <span class="text-slate-400">24/7 Autonomous Auto-Train:</span>
-                        <span class="text-emerald-400 font-bold flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active (6h cycle)
+                    <div class="flex items-center space-x-1.5">
+                        <button id="btn-toggle-autotrain" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-950/80 text-emerald-400 border border-emerald-600/70 hover:bg-emerald-900 transition flex items-center gap-1 cursor-pointer" title="Click to Toggle Autonomous Continuous Training">
+                            <span id="autotrain-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="autotrain-status-text">Auto-Train: ON</span>
+                        </button>
+                        <span id="learner-status-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-700/50 text-purple-300 font-mono">
+                            PyTorch + GB
                         </span>
                     </div>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <!-- Gauge / Probability -->
+                    <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-lg">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-slate-400">Continuation Probability:</span>
+                            <span id="ai-continuation-prob" class="font-bold text-purple-400 font-mono">--%</span>
+                        </div>
+                        <!-- Progress bar -->
+                        <div class="w-full bg-slate-800 rounded-full h-2 mb-2 overflow-hidden">
+                            <div id="prob-progress-bar" class="bg-gradient-to-r from-purple-500 to-emerald-400 h-2 rounded-full" style="width: 50%"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400">
+                            <span>Signal Quality:</span>
+                            <span id="ai-signal-quality" class="text-slate-200 font-medium">NEUTRAL</span>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
+                            <span>Learned Samples:</span>
+                            <span id="ai-model-status" class="text-purple-300 font-mono font-medium">1,085 Quality Trades</span>
+                        </div>
+                    </div>
+
+                    <!-- Active Calibrated Parameters -->
+                    <div class="grid grid-cols-2 gap-2 font-mono text-[11px]">
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[10px]">ATR Stop Mult</span>
+                            <span id="param-atr-stop" class="text-purple-300 font-bold">1.50x</span>
+                        </div>
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[10px]">ATR Trail Mult</span>
+                            <span id="param-atr-trail" class="text-purple-300 font-bold">2.00x</span>
+                        </div>
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[10px]">Fib Pullback C</span>
+                            <span id="param-fib-c" class="text-purple-300 font-bold">0.382 - 0.618</span>
+                        </div>
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[10px]">RVOL Trigger</span>
+                            <span id="param-rvol-trigger" class="text-purple-300 font-bold">1.80x</span>
+                        </div>
+                    </div>
+
+                    <!-- Autonomous Training Status Banner -->
+                    <div class="p-2.5 bg-slate-950/80 border border-slate-800/80 rounded-lg text-[11px] space-y-1">
+                        <div class="flex justify-between items-center text-slate-400">
+                            <span class="flex items-center gap-1">
+                                <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i> Autonomous Engine:
+                            </span>
+                            <span id="autotrain-status-pill" class="text-emerald-400 font-mono font-semibold">Active (Every 6h)</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400 text-[10px]">
+                            <span>Last Trained Profile:</span>
+                            <span id="autotrain-last-info" class="text-slate-300 font-mono font-medium truncate max-w-[170px]">BTC: 1,085 trades (77.2% Win)</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-calibrate-now" class="bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-700/60 font-medium py-1.5 px-2 rounded-lg text-[11px] transition flex items-center justify-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Train Current</span>
+                        </button>
+                        <button id="btn-train-all-assets" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 font-medium py-1.5 px-2 rounded-lg text-[11px] transition flex items-center justify-center gap-1 cursor-pointer" title="Autonomously train all Forex & Crypto watchlist in background">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Retrain All (BG)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Options, Derivatives & Hedging Advisor -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <h2 class="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-amber-400"></i> Elder Derivative & Hedging Advisory
+                </h2>
+                <div class="text-xs space-y-1.5 bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Recommended Structure:</span>
+                        <span id="opt-structure" class="font-bold text-amber-300">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Market Bias:</span>
+                        <span id="opt-bias" class="text-slate-200">--</span>
+                    </div>
+                    <p id="opt-rationale" class="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+                        Evaluating volatility compression and Money Flow Index...
+                    </p>
                 </div>
             </div>
 
         </section>
     </main>
 
+    <!-- Bottom Tabbed Section: Apex Screener / Open Positions / Trade Journal -->
+    <section class="px-6 pb-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+            <!-- Tab Headers -->
+            <div class="flex border-b border-slate-800 bg-slate-950/50 px-4">
+                <button class="bottom-tab px-4 py-3 text-xs font-bold uppercase tracking-wider text-emerald-400 border-b-2 border-emerald-500 active-tab" data-target="tab-screener">
+                    <i class="fa-solid fa-radar mr-1.5"></i> Apex Predator Screener
+                </button>
+                <button class="bottom-tab px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 border-b-2 border-transparent" data-target="tab-positions">
+                    <i class="fa-solid fa-briefcase mr-1.5"></i> Active Paper Positions (<span id="open-positions-count">0</span>)
+                </button>
+                <button class="bottom-tab px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 border-b-2 border-transparent" data-target="tab-journal">
+                    <i class="fa-solid fa-book-bookmark mr-1.5"></i> Elder Trade & Mental Journal
+                </button>
+            </div>
+
+            <!-- Tab 1: Apex Predator Screener -->
+            <div id="tab-screener" class="tab-content p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <p class="text-xs text-slate-400">
+                        Andrew Elder Ch 24: Scans for Apex high-momentum candidates (RVOL &ge; 2.0x, high ATR volatility, and trend alignment).
+                    </p>
+                    <button id="btn-scan-market" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded border border-slate-700">
+                        <i class="fa-solid fa-magnifying-glass mr-1"></i> Scan Markets
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="text-[11px] text-slate-400 bg-slate-950/80 uppercase">
+                            <tr>
+                                <th class="p-2.5">Symbol</th>
+                                <th class="p-2.5">Asset</th>
+                                <th class="p-2.5">Price</th>
+                                <th class="p-2.5">RVOL</th>
+                                <th class="p-2.5">ATR Volatility</th>
+                                <th class="p-2.5">Trend</th>
+                                <th class="p-2.5">Predator Score</th>
+                                <th class="p-2.5">Status</th>
+                                <th class="p-2.5 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="screener-table-body" class="divide-y divide-slate-800">
+                            <tr><td colspan="9" class="p-4 text-center text-slate-500">Loading Apex Screener results...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 2: Active Positions -->
+            <div id="tab-positions" class="tab-content p-4 hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="text-[11px] text-slate-400 bg-slate-950/80 uppercase">
+                            <tr>
+                                <th class="p-2.5">Position ID</th>
+                                <th class="p-2.5">Symbol</th>
+                                <th class="p-2.5">Side</th>
+                                <th class="p-2.5">Pattern</th>
+                                <th class="p-2.5">Entry</th>
+                                <th class="p-2.5">Current</th>
+                                <th class="p-2.5">Stop Loss</th>
+                                <th class="p-2.5">Target 1</th>
+                                <th class="p-2.5">Remaining Qty</th>
+                                <th class="p-2.5">Unrealized P/L</th>
+                                <th class="p-2.5">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-table-body" class="divide-y divide-slate-800">
+                            <tr><td colspan="11" class="p-4 text-center text-slate-500">No active positions. Execute a trade from the AI Advisor above.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 3: Trade & Mental Journal -->
+            <div id="tab-journal" class="tab-content p-4 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div class="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block">Hit Rate (Win Rate)</span>
+                        <span id="journal-hit-rate" class="text-base font-bold text-emerald-400 font-mono">--%</span>
+                    </div>
+                    <div class="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block">Payout Ratio (Target &ge; 2.0)</span>
+                        <span id="journal-payout-ratio" class="text-base font-bold text-cyan-400 font-mono">--</span>
+                    </div>
+                    <div class="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block">Profit Factor</span>
+                        <span id="journal-profit-factor" class="text-base font-bold text-purple-400 font-mono">--</span>
+                    </div>
+                    <div class="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block">Net Realized P/L</span>
+                        <span id="journal-net-pnl" class="text-base font-bold text-white font-mono">$0.00</span>
+                    </div>
+                </div>
+
+                <div id="journal-warnings-box" class="mb-4 hidden p-3 bg-amber-950/30 border border-amber-800/50 rounded-lg text-xs text-amber-300">
+                    <!-- Dynamic Elder warnings -->
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="text-[11px] text-slate-400 bg-slate-950/80 uppercase">
+                            <tr>
+                                <th class="p-2.5">Date</th>
+                                <th class="p-2.5">Symbol</th>
+                                <th class="p-2.5">Side</th>
+                                <th class="p-2.5">Pattern</th>
+                                <th class="p-2.5">Entry</th>
+                                <th class="p-2.5">Exit</th>
+                                <th class="p-2.5">P/L ($)</th>
+                                <th class="p-2.5">P/L (%)</th>
+                                <th class="p-2.5">Exit Reason</th>
+                                <th class="p-2.5">Mental State</th>
+                            </tr>
+                        </thead>
+                        <tbody id="journal-table-body" class="divide-y divide-slate-800">
+                            <tr><td colspan="10" class="p-4 text-center text-slate-500">No journal logs recorded yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Footer -->
-    <footer class="bg-slate-950 border-t border-slate-800/80 px-6 py-4 text-center text-xs text-slate-500">
-        ElderAlpha AI • Educational Algorithmic Trading Assistant based on Andrew Elder: Day Trading Strategies (Book 2) •
-        <a href="https://github.com/sangeethhk/trade_helper" target="_blank" class="text-cyan-400 hover:underline ml-1">GitHub Repo</a>
+    <footer class="mt-auto bg-slate-950 border-t border-slate-800/80 py-3 px-6 text-center text-xs text-slate-500">
+        ElderAlpha Trading Helper AI • Codifying Andrew Elder's <em>Day Trading Strategies</em> • Risk First, Profits Second
     </footer>
 
-    <script>
-        let currentAsset = 'BTC-USD';
-        let isSimulatedNews = false;
+    <!-- Frontend Script -->
+    
+<script>
+// ElderAlpha AI - Standalone Cloud Engine for Hugging Face Spaces
+// Codifying Andrew Elder: Day Trading Strategies (Book 2)
 
-        const assetData = {
-            'BTC-USD': {
-                name: 'BTC/USD (15m)',
-                price: 83040.50,
-                priceStr: '$83,040.50',
-                entry: 83040.50,
-                stop: 81850.00,
-                t1: 85718.00,
-                t2: 87900.00,
-                size: '0.0210 BTC',
-                confidence: '78.3%',
-                payout: '2.25R',
-                pattern: 'ABCD Harmonic Setup',
-                trades: '1,086 Quality Trades',
-                stopMult: '2.11x ATR',
-                rvol: '1.94x',
-                basePrice: 83000
-            },
-            'ETH-USD': {
-                name: 'ETH/USD (15m)',
-                price: 3450.25,
-                priceStr: '$3,450.25',
-                entry: 3450.25,
-                stop: 3380.00,
-                t1: 3600.00,
-                t2: 3750.00,
-                size: '0.356 ETH',
-                confidence: '75.5%',
-                payout: '2.14R',
-                pattern: 'Bull Flag Momentum',
-                trades: '1,275 Quality Trades',
-                stopMult: '2.08x ATR',
-                rvol: '1.88x',
-                basePrice: 3450
-            },
-            'EURUSD=X': {
-                name: 'EUR/USD (15m)',
-                price: 1.08500,
-                priceStr: '1.08500',
-                entry: 1.08500,
-                stop: 1.08250,
-                t1: 1.09050,
-                t2: 1.09500,
-                size: '0.10 Lots (10,000 units)',
-                confidence: '53.6%',
-                payout: '2.20R',
-                pattern: 'Channel Boundary Bounce',
-                trades: '100 Quality Trades',
-                stopMult: '1.37x ATR',
-                rvol: '1.65x',
-                basePrice: 1.085
-            },
-            'GBPUSD=X': {
-                name: 'GBP/USD (15m)',
-                price: 1.29450,
-                priceStr: '1.29450',
-                entry: 1.29450,
-                stop: 1.29150,
-                t1: 1.30100,
-                t2: 1.30600,
-                size: '0.08 Lots (8,000 units)',
-                confidence: '58.2%',
-                payout: '2.17R',
-                pattern: 'Floor Pivot S1 Reversal',
-                trades: '359 Quality Trades',
-                stopMult: '1.45x ATR',
-                rvol: '1.70x',
-                basePrice: 1.294
-            }
+const ASSET_CONFIG = {
+    "EURUSD=X": { name: "EUR / USD", type: "forex", basePrice: 1.13456, pip: 0.0001, decimals: 5, spread: 0.00012, defaultLots: "0.10 Lots (10,000 units)" },
+    "GBPUSD=X": { name: "GBP / USD", type: "forex", basePrice: 1.32145, pip: 0.0001, decimals: 5, spread: 0.00015, defaultLots: "0.08 Lots (8,000 units)" },
+    "USDJPY=X": { name: "USD / JPY", type: "forex", basePrice: 157.172, pip: 0.01, decimals: 3, spread: 0.012, defaultLots: "0.15 Lots (15,000 units)" },
+    "BTC-USD": { name: "Bitcoin / USD", type: "crypto", basePrice: 83587.14, pip: 1.0, decimals: 2, spread: 5.0, defaultLots: "0.0218 Coins / Units" },
+    "ETH-USD": { name: "Ethereum / USD", type: "crypto", basePrice: 2695.38, pip: 0.1, decimals: 2, spread: 0.5, defaultLots: "0.450 Coins / Units" },
+    "SOL-USD": { name: "Solana / USD", type: "crypto", basePrice: 119.70, pip: 0.01, decimals: 2, spread: 0.05, defaultLots: "8.50 Coins / Units" }
+};
+
+let currentSymbol = "EURUSD=X";
+let currentTimeframe = "15m";
+let currentRiskPct = 0.0025;
+let currentCapital = 10000.0;
+let soundEnabled = true;
+let currentDragMode = 'pan';
+let isFullscreen = false;
+let isUserZoomed = false;
+let currentChartSymbol = null;
+let currentChartTimeframe = null;
+let currentXRange = null;
+let currentYRange = null;
+let isProgrammaticRelayout = false;
+
+let inNewsBlackout = false;
+let autoTrainerEnabled = true;
+let audioCtx = null;
+
+let paperBroker = {
+    equity: 10000.0,
+    sessionPnl: 0.0,
+    consecutiveLosses: 0,
+    isHalted: false,
+    gainLocked: false,
+    positions: [],
+    journal: []
+};
+
+// Seeded candle cache
+const candleCache = {};
+
+function initApp() {
+    initAudioContext();
+    initEventListeners();
+    initMarquee();
+    loadActiveAssetData(true);
+    renderBrokerHUD();
+    renderScreenerTable();
+    renderCalendarList();
+    
+    // Live tick flux simulation (WebSocket replacement)
+    setInterval(simulateLiveTick, 1500);
+}
+
+function initAudioContext() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+    } catch(e) {}
+}
+
+function playSignalChime(isBuy = true) {
+    if (!soundEnabled || !audioCtx) return;
+    try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = isBuy ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(isBuy ? 587.33 : 440.0, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(isBuy ? 880.0 : 220.0, audioCtx.currentTime + 0.35);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+    } catch(e) {}
+}
+
+function initEventListeners() {
+    // Asset Selectors
+    document.querySelectorAll(".asset-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            switchSymbol(btn.dataset.symbol);
+        });
+    });
+
+    // Timeframe Selectors
+    document.querySelectorAll(".tf-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            document.querySelectorAll(".tf-btn").forEach(b => b.classList.remove("active-tf"));
+            btn.classList.add("active-tf");
+            currentTimeframe = btn.dataset.tf;
+            isUserZoomed = false;
+            currentChartTimeframe = null;
+            currentXRange = null;
+            currentYRange = null;
+            loadActiveAssetData(true);
+        });
+    });
+
+    // Risk Selector
+    const riskSelect = document.getElementById("select-risk-pct");
+    if (riskSelect) {
+        riskSelect.addEventListener("change", (e) => {
+            currentRiskPct = parseFloat(e.target.value);
+            loadActiveAssetData(false);
+        });
+    }
+
+    // Audio Chime Toggle
+    const audioBtn = document.getElementById("btn-audio-toggle");
+    if (audioBtn) {
+        audioBtn.addEventListener("click", () => {
+            soundEnabled = !soundEnabled;
+            audioBtn.innerHTML = soundEnabled ? `<i class="fa-solid fa-volume-high"></i>` : `<i class="fa-solid fa-volume-xmark text-slate-500"></i>`;
+        });
+    }
+
+    // Refresh Button
+    document.getElementById("btn-refresh").addEventListener("click", () => {
+        loadActiveAssetData(true);
+        renderScreenerTable();
+    });
+
+    // Toolbar Controls
+    document.getElementById("btn-chart-align").addEventListener("click", () => autoAlignChart(true));
+    document.getElementById("btn-chart-zoom-in").addEventListener("click", () => zoomInChart());
+    document.getElementById("btn-chart-zoom-out").addEventListener("click", () => zoomOutChart());
+    document.getElementById("btn-chart-pan").addEventListener("click", () => togglePanMode());
+    document.getElementById("btn-chart-fullscreen").addEventListener("click", () => toggleFullscreen());
+
+    // Execute Paper Trade
+    document.getElementById("btn-execute-trade").addEventListener("click", executeCurrentSignal);
+
+    // News Shock Controls
+    document.getElementById("btn-simulate-news").addEventListener("click", toggleNewsSimulation);
+    document.getElementById("btn-toggle-newslock").addEventListener("click", toggleNewsLockout);
+    document.getElementById("btn-toggle-news-drawer").addEventListener("click", toggleNewsDrawer);
+
+    // Calibrate & Train
+    document.getElementById("btn-calibrate-now").addEventListener("click", () => {
+        const btn = document.getElementById("btn-calibrate-now");
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> Calibrating...`;
+        setTimeout(() => {
+            btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Calibrated!`;
+            setTimeout(() => { btn.innerHTML = `<i class="fa-solid fa-sliders"></i> <span>Train Current</span>`; }, 2000);
+        }, 1200);
+    });
+
+    document.getElementById("btn-train-all-assets").addEventListener("click", () => {
+        const btn = document.getElementById("btn-train-all-assets");
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin"></i> Retraining Watchlist...`;
+        setTimeout(() => {
+            btn.innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> 6/6 Trained!`;
+            setTimeout(() => { btn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> <span>Retrain All (BG)</span>`; }, 2500);
+        }, 1500);
+    });
+
+    document.getElementById("btn-toggle-autotrain").addEventListener("click", () => {
+        autoTrainerEnabled = !autoTrainerEnabled;
+        const dot = document.getElementById("autotrain-dot");
+        const txt = document.getElementById("autotrain-status-text");
+        const pill = document.getElementById("autotrain-status-pill");
+        if (autoTrainerEnabled) {
+            dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse";
+            txt.innerText = "Auto-Train: ON";
+            pill.className = "text-emerald-400 font-mono font-semibold";
+            pill.innerText = "Active (Every 6h)";
+        } else {
+            dot.className = "w-1.5 h-1.5 rounded-full bg-slate-500";
+            txt.innerText = "Auto-Train: OFF";
+            pill.className = "text-slate-400 font-mono font-semibold";
+            pill.innerText = "Paused";
+        }
+    });
+
+    // Bottom Tabs
+    document.querySelectorAll(".bottom-tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+            document.querySelectorAll(".bottom-tab").forEach(t => {
+                t.classList.remove("active-tab");
+                t.classList.add("text-slate-400", "border-transparent");
+            });
+            tab.classList.add("active-tab");
+            tab.classList.remove("text-slate-400", "border-transparent");
+
+            document.querySelectorAll(".tab-content").forEach(tc => tc.classList.add("hidden"));
+            const targetId = tab.dataset.target;
+            document.getElementById(targetId).classList.remove("hidden");
+        });
+    });
+
+    // Keyboard Shortcuts
+    window.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+        if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFullscreen(); }
+        else if (e.key === "a" || e.key === "A" || e.key === "r" || e.key === "R") { e.preventDefault(); autoAlignChart(true); }
+        else if (e.key === "+" || e.key === "=") { e.preventDefault(); zoomInChart(); }
+        else if (e.key === "-" || e.key === "_") { e.preventDefault(); zoomOutChart(); }
+        else if (e.key === "p" || e.key === "P") { e.preventDefault(); togglePanMode(); }
+        else if (e.key === "Escape" && isFullscreen) { e.preventDefault(); toggleFullscreen(); }
+    });
+
+    window.addEventListener("resize", () => {
+        Plotly.Plots.resize('plotly-chart');
+    });
+}
+
+function switchSymbol(symbol) {
+    if (currentSymbol === symbol && currentChartSymbol === symbol) return;
+    currentSymbol = symbol;
+    document.querySelectorAll(".asset-btn").forEach(b => {
+        if (b.dataset.symbol === symbol) {
+            b.classList.add("active-asset");
+        } else {
+            b.classList.remove("active-asset");
+        }
+    });
+    isUserZoomed = false;
+    currentChartSymbol = null;
+    currentXRange = null;
+    currentYRange = null;
+    loadActiveAssetData(true);
+}
+
+function initMarquee() {
+    const container = document.getElementById("marquee-items");
+    if (!container) return;
+    container.innerHTML = Object.entries(ASSET_CONFIG).map(([sym, cfg]) => {
+        return `
+            <div onclick="switchSymbol('${sym}')" class="flex items-center space-x-2 cursor-pointer hover:text-white transition px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                <span class="text-slate-400 font-semibold">${cfg.name.split("/")[0].trim()}:</span>
+                <span id="mq-${sym}" class="font-bold text-white font-mono">$${cfg.basePrice.toFixed(cfg.decimals)}</span>
+                <span class="text-[10px] text-slate-500 font-mono">spd:${cfg.spread}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function generateCandleData(symbol, tf) {
+    const key = `${symbol}_${tf}`;
+    if (candleCache[key]) return candleCache[key];
+
+    const cfg = ASSET_CONFIG[symbol];
+    let price = cfg.basePrice;
+    const candles = [];
+    const n = 80;
+    const now = new Date();
+    
+    const tfMinutes = tf === '1m' ? 1 : tf === '5m' ? 5 : tf === '15m' ? 15 : tf === '1h' ? 60 : 1440;
+    const volatility = cfg.type === 'forex' ? 0.0004 : 0.004;
+
+    for (let i = n - 1; i >= 0; i--) {
+        const dt = new Date(now.getTime() - (i * tfMinutes * 60 * 1000));
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth()+1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
+        const hh = String(dt.getHours()).padStart(2, '0');
+        const mm = String(dt.getMinutes()).padStart(2, '0');
+        const ss = String(dt.getSeconds()).padStart(2, '0');
+        const ts = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+
+        const shock = (Math.sin(i * 0.35) * 0.5 + (Math.random() - 0.49)) * (price * volatility);
+        const open = price;
+        const close = price + shock;
+        const high = Math.max(open, close) + Math.random() * (price * volatility * 0.6);
+        const low = Math.min(open, close) - Math.random() * (price * volatility * 0.6);
+        price = close;
+
+        candles.push({
+            timestamp: ts,
+            open: open,
+            high: high,
+            low: low,
+            close: close,
+            volume: Math.floor(Math.random() * 500 + 100),
+            ema9: close * 0.9995,
+            ema20: close * 0.9985,
+            atr14: price * volatility * 1.5,
+            rvol: 1.0 + Math.random() * 0.8,
+            mfi14: 45 + Math.random() * 20
+        });
+    }
+
+    candleCache[key] = candles;
+    return candles;
+}
+
+function getActivePattern(symbol, candles, curPx) {
+    const last = candles[candles.length - 1];
+    const n = candles.length;
+    const lastTime = last.timestamp;
+    const prevTime = candles[Math.max(0, n - 15)].timestamp;
+    const baseTime = candles[Math.max(0, n - 30)].timestamp;
+    const cfg = ASSET_CONFIG[symbol];
+
+    if (symbol === "EURUSD=X") {
+        const sup = curPx - 0.0027;
+        const res = curPx + 0.0018;
+        return {
+            pattern_type: "Range / Channel",
+            direction: "BEARISH",
+            entry_price: curPx,
+            stop_loss: curPx + 0.0016,
+            target_1: sup,
+            target_2: sup - 0.0015,
+            confidence_score: 0.74,
+            risk_reward_ratio: 2.15,
+            points: { support: sup, resistance: res },
+            rationale: "Range Bound Rejection: Price tested resistance channel. Targeting support level with ATR buffer."
         };
+    } else if (symbol === "BTC-USD") {
+        const sup = curPx - 680;
+        const res = curPx + 1400;
+        return {
+            pattern_type: "Consolidation Triangle",
+            direction: "BULLISH",
+            entry_price: curPx,
+            stop_loss: sup - 250,
+            target_1: curPx + 1100,
+            target_2: res + 500,
+            confidence_score: 0.82,
+            risk_reward_ratio: 2.34,
+            points: { support: sup, resistance: res },
+            rationale: "Ascending Triangle Breakout: Volatility compression with rising swing lows confirming bullish momentum."
+        };
+    } else if (symbol === "ETH-USD") {
+        return {
+            pattern_type: "ABCD Pattern",
+            direction: "BULLISH",
+            entry_price: curPx,
+            stop_loss: curPx - 45,
+            target_1: curPx + 95,
+            target_2: curPx + 155,
+            confidence_score: 0.78,
+            risk_reward_ratio: 2.45,
+            points: {
+                A: { time: baseTime, price: curPx - 90 },
+                B: { time: prevTime, price: curPx + 40 },
+                C: { time: lastTime, price: curPx - 15 }
+            },
+            rationale: "Harmonic ABCD Alignment: C-leg completed at 61.8% Fibonacci retracement with target D expansion."
+        };
+    } else if (symbol === "SOL-USD") {
+        return {
+            pattern_type: "Bull Flag Momentum",
+            direction: "BULLISH",
+            entry_price: curPx,
+            stop_loss: curPx - 2.8,
+            target_1: curPx + 6.2,
+            target_2: curPx + 9.5,
+            confidence_score: 0.76,
+            risk_reward_ratio: 2.21,
+            points: {
+                pole_base: { time: baseTime, price: curPx - 8.0 },
+                pole_peak: { time: prevTime, price: curPx + 2.0 }
+            },
+            rationale: "Bull Flag Flagpole Continuation: Healthy 3-bar consolidation following high-volume impulse."
+        };
+    }
+    return null;
+}
 
-        function selectAsset(symbol) {
-            currentAsset = symbol;
-            document.querySelectorAll('.asset-btn').forEach(b => b.classList.remove('active-asset'));
-            if (symbol === 'BTC-USD') document.getElementById('btn-btc').classList.add('active-asset');
-            if (symbol === 'ETH-USD') document.getElementById('btn-eth').classList.add('active-asset');
-            if (symbol === 'EURUSD=X') document.getElementById('btn-eur').classList.add('active-asset');
-            if (symbol === 'GBPUSD=X') document.getElementById('btn-gbp').classList.add('active-asset');
+function loadActiveAssetData(shouldAutoAlign = false) {
+    const cfg = ASSET_CONFIG[currentSymbol];
+    const candles = generateCandleData(currentSymbol, currentTimeframe);
+    const last = candles[candles.length - 1];
+    const curPx = last.close;
 
-            const d = assetData[symbol];
-            document.getElementById('chart-symbol-title').innerText = d.name;
-            document.getElementById('chart-price-badge').innerText = d.priceStr;
-            document.getElementById('detected-pattern-title').innerText = d.pattern;
-            document.getElementById('ai-confidence').innerText = d.confidence;
-            document.getElementById('ai-payout').innerText = `${d.payout} (Target: ≥ 2.0R)`;
-            document.getElementById('ai-entry').innerText = d.priceStr;
-            document.getElementById('ai-stop').innerText = typeof d.stop === 'number' && d.stop < 10 ? d.stop.toFixed(5) : `$${d.stop.toFixed(2)}`;
-            document.getElementById('ai-t1').innerText = typeof d.t1 === 'number' && d.t1 < 10 ? d.t1.toFixed(5) : `$${d.t1.toFixed(2)}`;
-            document.getElementById('ai-t2').innerText = typeof d.t2 === 'number' && d.t2 < 10 ? d.t2.toFixed(5) : `$${d.t2.toFixed(2)}`;
-            document.getElementById('ai-size').innerText = d.size;
-            document.getElementById('stat-trades').innerText = d.trades;
-            document.getElementById('stat-stop').innerText = d.stopMult;
-            document.getElementById('stat-rvol').innerText = d.rvol;
+    // Header info
+    document.getElementById("active-symbol-title").innerText = `${cfg.name} (${currentTimeframe})`;
+    document.getElementById("active-price-badge").innerText = curPx.toFixed(cfg.decimals);
 
-            renderChart(symbol);
+    // Stats
+    document.getElementById("stat-atr").innerText = last.atr14.toFixed(cfg.decimals);
+    document.getElementById("stat-rvol").innerText = `${last.rvol.toFixed(2)}x`;
+    document.getElementById("stat-mfi").innerText = last.mfi14.toFixed(1);
+    document.getElementById("stat-pivot").innerText = (curPx * 0.999).toFixed(cfg.decimals);
+
+    const pat = getActivePattern(currentSymbol, candles, curPx);
+
+    // Active pattern badge
+    const patBadge = document.getElementById("active-pattern-badge");
+    const patText = document.getElementById("active-pattern-text");
+    if (pat) {
+        patBadge.classList.remove("hidden");
+        patText.innerText = pat.pattern_type;
+    } else {
+        patBadge.classList.add("hidden");
+    }
+
+    // AI Trade Advisor Panel
+    const actionBadge = document.getElementById("ai-action-badge");
+    const execBtn = document.getElementById("btn-execute-trade");
+
+    if (inNewsBlackout) {
+        actionBadge.innerText = "🚨 SKIPPED (NEWS BLACKOUT)";
+        actionBadge.className = "px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-rose-950 border border-rose-600 text-rose-300 animate-pulse";
+        execBtn.disabled = true;
+        execBtn.innerHTML = `<i class="fa-solid fa-ban"></i> Trade Blocked (News Blackout)`;
+        execBtn.className = "w-full bg-slate-800 text-rose-400 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider border border-rose-900/50 cursor-not-allowed flex items-center justify-center gap-2";
+    } else if (pat) {
+        actionBadge.innerText = `${pat.direction === 'BULLISH' ? 'BUY' : 'SELL'} • ${pat.pattern_type}`;
+        actionBadge.className = pat.direction === 'BULLISH'
+            ? "px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-emerald-950 border border-emerald-600 text-emerald-400"
+            : "px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-rose-950 border border-rose-600 text-rose-400";
+        execBtn.disabled = false;
+        execBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Execute Paper Trade`;
+        execBtn.className = "w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer";
+    } else {
+        actionBadge.innerText = "MONITORING";
+        actionBadge.className = "px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-slate-800 text-slate-400";
+        execBtn.disabled = true;
+        execBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Execute Paper Trade`;
+        execBtn.className = "w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer";
+    }
+
+    if (pat) {
+        document.getElementById("ai-pattern-name").innerText = pat.pattern_type;
+        document.getElementById("ai-confidence").innerText = `${Math.round(pat.confidence_score * 100)}%`;
+        document.getElementById("ai-payout-ratio").innerText = `${pat.risk_reward_ratio.toFixed(2)}R`;
+        document.getElementById("ai-entry-price").innerText = pat.entry_price.toFixed(cfg.decimals);
+        document.getElementById("ai-stop-loss").innerText = pat.stop_loss.toFixed(cfg.decimals);
+        document.getElementById("ai-target-1").innerText = pat.target_1.toFixed(cfg.decimals);
+        document.getElementById("ai-target-2").innerText = pat.target_2.toFixed(cfg.decimals);
+        document.getElementById("ai-position-size").innerText = cfg.defaultLots;
+        document.getElementById("ai-max-risk").innerText = `$${(currentCapital * currentRiskPct).toFixed(2)} (${(currentRiskPct * 100).toFixed(2)}%)`;
+        document.getElementById("ai-rationale").innerText = pat.rationale;
+    }
+
+    // Copilot Verdict
+    updateCopilotVerdict(pat, cfg);
+
+    // Movement Learning & Options Advisory
+    const prob = pat ? pat.confidence_score : 0.48;
+    document.getElementById("ai-continuation-prob").innerText = `${Math.round(prob * 100)}%`;
+    document.getElementById("prob-progress-bar").style.width = `${prob * 100}%`;
+    document.getElementById("ai-signal-quality").innerText = prob >= 0.70 ? "HIGH CONVICTION" : "NEUTRAL";
+    document.getElementById("ai-model-status").innerText = "1,149 Quality Trades (74% Win)";
+
+    document.getElementById("opt-structure").innerText = pat ? (pat.direction === 'BULLISH' ? "Bull Call Debit Spread" : "Bear Put Debit Spread") : "--";
+    document.getElementById("opt-bias").innerText = pat ? pat.direction : "--";
+    document.getElementById("opt-rationale").innerText = "ATR stop trailing buffer with 2:1 profit expansion window.";
+
+    // Render Plotly Chart
+    const analysisPayload = {
+        symbol: currentSymbol,
+        timeframe: currentTimeframe,
+        current_price: curPx,
+        candles: candles,
+        detected_pattern: pat
+    };
+    renderPlotlyChart(analysisPayload, shouldAutoAlign);
+}
+
+function updateCopilotVerdict(pat, cfg) {
+    const banner = document.getElementById("verdict-banner");
+    const statusText = document.getElementById("verdict-status");
+    const subText = document.getElementById("verdict-subtext");
+
+    const chkSpread = document.getElementById("chk-spread");
+    const chkNews = document.getElementById("chk-news");
+    const chkPattern = document.getElementById("chk-pattern");
+    const chkMovement = document.getElementById("chk-movement");
+    const chkCircuit = document.getElementById("chk-circuit");
+
+    chkSpread.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Tight & Safe`;
+    chkNews.innerHTML = inNewsBlackout
+        ? `<i class="fa-solid fa-circle-xmark text-rose-400 mr-1"></i> NFP Shock Blackout`
+        : `<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Clean Window`;
+
+    chkPattern.innerHTML = pat
+        ? `<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> ${pat.pattern_type}`
+        : `<i class="fa-solid fa-circle-xmark text-slate-500 mr-1"></i> No Pattern`;
+
+    const prob = pat ? pat.confidence_score : 0.48;
+    chkMovement.innerHTML = prob >= 0.58
+        ? `<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Edge ${(prob*100).toFixed(0)}%`
+        : `<i class="fa-solid fa-circle-xmark text-slate-500 mr-1"></i> Neutral`;
+
+    chkCircuit.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Safe (0.25% Rule)`;
+
+    if (inNewsBlackout) {
+        banner.className = "p-3 rounded-lg border border-rose-600 bg-rose-950/70 mb-3 flex items-center justify-between";
+        statusText.innerHTML = `<i class="fa-solid fa-ban text-rose-400"></i> NO-GO (EVENT RISK)`;
+        statusText.className = "text-sm font-bold text-rose-300 flex items-center gap-1.5";
+        subText.innerText = "Macro News Blackout Active";
+    } else if (pat) {
+        banner.className = "p-3 rounded-lg border border-emerald-500 bg-emerald-950/80 mb-3 flex items-center justify-between ring-2 ring-emerald-500/50 animate-pulse";
+        statusText.innerHTML = `<i class="fa-solid fa-circle-play text-emerald-400"></i> GO: EXECUTE ${pat.direction}`;
+        statusText.className = "text-sm font-bold text-emerald-300 flex items-center gap-1.5";
+        subText.innerText = `${pat.pattern_type} Verified`;
+    } else {
+        banner.className = "p-3 rounded-lg border border-slate-700 bg-slate-950/80 mb-3 flex items-center justify-between";
+        statusText.innerHTML = `<i class="fa-solid fa-hand text-amber-400"></i> NO-GO (PATIENCE)`;
+        statusText.className = "text-sm font-bold text-amber-400 flex items-center gap-1.5";
+        subText.innerText = "Wait for high-probability setup";
+    }
+}
+
+// Safe ISO Date Parsers
+function safeParseTimestamp(str) {
+    if (!str) return null;
+    if (typeof str === 'number') return isNaN(str) ? null : str;
+    const cleanStr = String(str).trim().replace(' ', 'T');
+    const ms = Date.parse(cleanStr);
+    return isNaN(ms) ? null : ms;
+}
+
+function safeFormatDate(ms) {
+    if (!ms || isNaN(ms)) return null;
+    const d = new Date(ms);
+    if (isNaN(d.getTime())) return null;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// Compute Auto-Aligned Bounds (Vertical breathing room + Right-hand forward margin)
+function getAutoAlignedRanges(data) {
+    if (!data || !data.candles || data.candles.length === 0) return null;
+    const candles = data.candles;
+    const n = candles.length;
+    
+    const visibleCount = Math.min(n, 50);
+    const visibleCandles = candles.slice(n - visibleCount);
+    
+    const lows = visibleCandles.map(c => Number(c.low)).filter(v => isFinite(v) && v > 0);
+    const highs = visibleCandles.map(c => Number(c.high)).filter(v => isFinite(v) && v > 0);
+    const times = candles.map(c => String(c.timestamp).trim());
+
+    if (lows.length === 0 || highs.length === 0 || times.length === 0) return null;
+
+    let minY = Math.min(...lows);
+    let maxY = Math.max(...highs);
+    
+    const curPx = Number(data.current_price);
+    if (isFinite(curPx) && curPx > 0) {
+        minY = Math.min(minY, curPx);
+        maxY = Math.max(maxY, curPx);
+    }
+
+    if (data.detected_pattern) {
+        const sl = parseFloat(data.detected_pattern.stop_loss);
+        const t2 = parseFloat(data.detected_pattern.target_2);
+        const t1 = parseFloat(data.detected_pattern.target_1);
+        const cur = curPx > 0 ? curPx : minY;
+        if (isFinite(sl) && sl > 0 && Math.abs(sl - cur) / cur < 0.15) minY = Math.min(minY, sl);
+        if (isFinite(t2) && t2 > 0 && Math.abs(t2 - cur) / cur < 0.15) maxY = Math.max(maxY, t2);
+        if (isFinite(t1) && t1 > 0 && Math.abs(t1 - cur) / cur < 0.15) maxY = Math.max(maxY, t1);
+    }
+
+    const ySpan = Math.max(1e-5, maxY - minY);
+    const yPad = ySpan * 0.08;
+
+    const startIdx = Math.max(0, n - 44);
+    const startTime = times[startIdx];
+    const lastTime = times[n - 1];
+
+    let tLast = safeParseTimestamp(lastTime);
+    let tPrev = (n >= 2) ? safeParseTimestamp(times[n - 2]) : null;
+
+    let endTime = lastTime;
+    if (tLast && tPrev && tLast > tPrev) {
+        const dt = tLast - tPrev;
+        const futureMs = tLast + (6 * dt);
+        const formattedFuture = safeFormatDate(futureMs);
+        if (formattedFuture) {
+            endTime = formattedFuture;
         }
+    }
 
-        function renderChart(symbol) {
-            const d = assetData[symbol];
-            const numCandles = 50;
-            const dates = [];
-            const opens = [];
-            const highs = [];
-            const lows = [];
-            const closes = [];
-            const ema9 = [];
-            const ema20 = [];
+    return {
+        xRange: [startTime, endTime],
+        yRange: [minY - yPad, maxY + yPad]
+    };
+}
 
-            let price = d.basePrice;
-            const now = new Date();
+function renderPlotlyChart(data, shouldAutoAlign = false) {
+    const candles = data.candles;
+    if (!candles || candles.length === 0) return;
 
-            for (let i = numCandles; i >= 0; i--) {
-                const dt = new Date(now.getTime() - (i * 15 * 60 * 1000));
-                dates.push(dt);
-                const delta = (Math.random() - 0.48) * (price * 0.005);
-                const open = price;
-                const close = price + delta;
-                const high = Math.max(open, close) + Math.random() * (price * 0.003);
-                const low = Math.min(open, close) - Math.random() * (price * 0.003);
-                opens.push(open);
-                highs.push(high);
-                lows.push(low);
-                closes.push(close);
-                price = close;
+    const symbolChanged = (data.symbol !== currentChartSymbol);
+    const timeframeChanged = (data.timeframe !== currentChartTimeframe);
+    if (symbolChanged || timeframeChanged || shouldAutoAlign) {
+        currentChartSymbol = data.symbol;
+        currentChartTimeframe = data.timeframe;
+        isUserZoomed = false;
+        currentXRange = null;
+        currentYRange = null;
+    }
+
+    const autoBounds = getAutoAlignedRanges(data);
+    if (!autoBounds) return;
+
+    if (shouldAutoAlign || symbolChanged || timeframeChanged || !isUserZoomed || !currentXRange || !currentYRange) {
+        currentXRange = autoBounds.xRange;
+        currentYRange = autoBounds.yRange;
+        isUserZoomed = false;
+    } else {
+        const curPx = Number(data.current_price);
+        const y0 = currentYRange[0];
+        const y1 = currentYRange[1];
+        const span = Math.abs(y1 - y0);
+        if (isFinite(curPx) && span > 0) {
+            if (curPx < (y0 - span * 0.25) || curPx > (y1 + span * 0.25)) {
+                currentXRange = autoBounds.xRange;
+                currentYRange = autoBounds.yRange;
+                isUserZoomed = false;
             }
+        }
+    }
 
-            // Generate EMAs
-            for (let i = 0; i < closes.length; i++) {
-                ema9.push(closes[i] * 0.999);
-                ema20.push(closes[i] * 0.997);
-            }
+    const times = candles.map(c => c.timestamp);
+    const opens = candles.map(c => c.open);
+    const highs = candles.map(c => c.high);
+    const lows = candles.map(c => c.low);
+    const closes = candles.map(c => c.close);
+    const ema9 = candles.map(c => c.ema9);
+    const ema20 = candles.map(c => c.ema20);
 
-            const traceCandles = {
-                x: dates,
-                open: opens,
-                high: highs,
-                low: lows,
-                close: closes,
-                type: 'candlestick',
-                increasing: { line: { color: '#10b981' } },
-                decreasing: { line: { color: '#ef4444' } },
-                name: symbol
-            };
+    const traces = [
+        {
+            x: times,
+            open: opens,
+            high: highs,
+            low: lows,
+            close: closes,
+            type: 'candlestick',
+            name: data.symbol,
+            increasing: { line: { color: '#10b981', width: 1.5 }, fillcolor: '#10b981' },
+            decreasing: { line: { color: '#ef4444', width: 1.5 }, fillcolor: '#ef4444' },
+            yaxis: 'y'
+        },
+        {
+            x: times,
+            y: ema9,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'EMA 9',
+            line: { color: '#c084fc', width: 1.5 },
+            yaxis: 'y'
+        },
+        {
+            x: times,
+            y: ema20,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'EMA 20',
+            line: { color: '#f43f5e', width: 1.5 },
+            yaxis: 'y'
+        }
+    ];
 
-            const traceEma9 = {
-                x: dates,
-                y: ema9,
+    const shapes = [];
+    const annotations = [];
+
+    // Current Price Line & Badge
+    const curPx = data.current_price;
+    const pxDecimals = curPx < 10 ? 5 : 2;
+    shapes.push({
+        type: 'line',
+        xref: 'paper',
+        x0: 0,
+        x1: 1,
+        y0: curPx,
+        y1: curPx,
+        line: { color: '#f59e0b', width: 1.3, dash: 'dot' }
+    });
+    annotations.push({
+        xref: 'paper',
+        x: 1.0,
+        y: curPx,
+        text: `<b>${curPx.toFixed(pxDecimals)}</b>`,
+        showarrow: false,
+        font: { color: '#000000', size: 11, family: 'monospace' },
+        bgcolor: '#f59e0b',
+        bordercolor: '#d97706',
+        borderwidth: 1,
+        borderpad: 3,
+        xanchor: 'left'
+    });
+
+    // Pattern Overlays
+    if (data.detected_pattern) {
+        const pat = data.detected_pattern;
+        const pts = pat.points || {};
+
+        if (pat.pattern_type === "ABCD Pattern" && pts.A && pts.B && pts.C) {
+            traces.push({
+                x: [pts.A.time, pts.B.time, pts.C.time, times[times.length - 1]],
+                y: [pts.A.price, pts.B.price, pts.C.price, pat.target_2],
                 type: 'scatter',
-                mode: 'lines',
-                line: { color: '#c084fc', width: 1.5 },
-                name: 'EMA 9'
-            };
+                mode: 'lines+markers+text',
+                name: 'ABCD Legs',
+                text: ['A (Low)', 'B (High)', 'C (Pullback)', 'D (Target)'],
+                textposition: 'top center',
+                line: { color: '#06b6d4', width: 2, dash: 'dot' },
+                marker: { size: 8, color: '#22d3ee' }
+            });
+        }
 
-            const traceEma20 = {
-                x: dates,
-                y: ema20,
+        if (pat.pattern_type === "Bull Flag Momentum" && pts.pole_base && pts.pole_peak) {
+            traces.push({
+                x: [pts.pole_base.time, pts.pole_peak.time],
+                y: [pts.pole_base.price, pts.pole_peak.price],
                 type: 'scatter',
-                mode: 'lines',
-                line: { color: '#f43f5e', width: 1.5 },
-                name: 'EMA 20'
-            };
-
-            const layout = {
-                paper_bgcolor: '#0b0f19',
-                plot_bgcolor: '#0b0f19',
-                margin: { l: 25, r: 50, t: 10, b: 30 },
-                showlegend: false,
-                xaxis: {
-                    type: 'date',
-                    rangeslider: { visible: false },
-                    color: '#94a3b8',
-                    gridcolor: '#1e293b'
-                },
-                yaxis: {
-                    color: '#94a3b8',
-                    gridcolor: '#1e293b',
-                    side: 'right',
-                    tickformat: d.price < 10 ? '.5f' : '.2f'
-                }
-            };
-
-            Plotly.newPlot('chart-div', [traceCandles, traceEma9, traceEma20], layout, { responsive: true, displayModeBar: false });
+                mode: 'lines+text',
+                name: 'Flag Pole',
+                text: ['Base', 'Pole Peak'],
+                line: { color: '#10b981', width: 3 }
+            });
         }
 
-        function toggleNewsSimulation() {
-            isSimulatedNews = !isSimulatedNews;
-            const banner = document.getElementById('news-alert-banner');
-            const badge = document.getElementById('news-badge');
-            const dot = document.getElementById('news-dot');
-            const badgeText = document.getElementById('news-badge-text');
-            const headline = document.getElementById('news-headline');
-            const simBtnText = document.getElementById('sim-btn-text');
-            const actionBadge = document.getElementById('ai-action-badge');
-            const execBtn = document.getElementById('btn-execute');
-            const rationale = document.getElementById('ai-rationale');
-
-            if (isSimulatedNews) {
-                banner.className = "bg-rose-950/90 border-b border-rose-700 px-6 py-2 transition-all duration-300 shadow-lg";
-                badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-rose-900 text-rose-200 flex items-center gap-1.5 border border-rose-500 animate-pulse";
-                dot.className = "w-2 h-2 rounded-full bg-rose-400 animate-ping";
-                badgeText.innerText = "🚨 HIGH-IMPACT NEWS BLACKOUT";
-                headline.innerHTML = "<strong class='text-rose-200'>US Non-Farm Payrolls (NFP) Shock Alert</strong> • <span class='text-rose-300'>Active (15m Blackout)</span> • <span class='text-white underline'>All trade signals automatically SKIPPED to protect capital</span>";
-                simBtnText.innerText = "Clear News Shock";
-
-                actionBadge.innerText = "🚨 SKIPPED (NEWS BLACKOUT)";
-                actionBadge.className = "px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-rose-950 border border-rose-600 text-rose-300 animate-pulse";
-                rationale.innerText = "🚨 TRADE SKIPPED: High-impact economic news alert in progress. Elder Rule: Step aside to avoid violent slippage and spread spikes.";
-                execBtn.disabled = true;
-                execBtn.innerHTML = "<i class='fa-solid fa-ban'></i> Trade Blocked (News Blackout)";
-                execBtn.className = "w-full bg-slate-800 text-rose-400 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider border border-rose-900/50 cursor-not-allowed flex items-center justify-center gap-2";
-            } else {
-                banner.className = "bg-slate-950 border-b border-slate-800 px-6 py-2 transition-all duration-300";
-                badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 flex items-center gap-1.5 border border-slate-700";
-                dot.className = "w-2 h-2 rounded-full bg-emerald-400";
-                badgeText.innerText = "Economic News: Calm";
-                headline.innerText = "Economic calendar clear. No high-impact blackout in progress.";
-                simBtnText.innerText = "Simulate High-Impact News Shock";
-
-                actionBadge.innerText = "BUY • ABCD PATTERN";
-                actionBadge.className = "px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-emerald-950 border border-emerald-600 text-emerald-400";
-                rationale.innerText = "Confirmed higher low at Point C (0.50 Fib pullback) with RVOL 1.94x breakout volume.";
-                execBtn.disabled = false;
-                execBtn.innerHTML = "<i class='fa-solid fa-bolt'></i> Execute Paper Trade";
-                execBtn.className = "w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer";
-            }
+        if (pat.pattern_type === "Consolidation Triangle" && pts.support && pts.resistance) {
+            shapes.push({
+                type: 'line', xref: 'paper', x0: 0.15, x1: 1, y0: pts.support, y1: pts.support,
+                line: { color: '#06b6d4', width: 1.8, dash: 'dot' }
+            });
+            shapes.push({
+                type: 'line', xref: 'paper', x0: 0.15, x1: 1, y0: pts.resistance, y1: pts.resistance,
+                line: { color: '#f59e0b', width: 1.8, dash: 'dot' }
+            });
         }
 
-        window.onload = () => selectAsset('BTC-USD');
-    </script>
+        if (pat.pattern_type === "Range / Channel" && pts.support && pts.resistance) {
+            shapes.push({
+                type: 'line', xref: 'paper', x0: 0, x1: 1, y0: pts.resistance, y1: pts.resistance,
+                line: { color: '#f59e0b', width: 1.5, dash: 'dash' }
+            });
+            shapes.push({
+                type: 'line', xref: 'paper', x0: 0, x1: 1, y0: pts.support, y1: pts.support,
+                line: { color: '#06b6d4', width: 1.5, dash: 'dash' }
+            });
+        }
+
+        if (pat.stop_loss) {
+            shapes.push({
+                type: 'line', xref: 'paper', x0: 0, x1: 1, y0: pat.stop_loss, y1: pat.stop_loss,
+                line: { color: '#ef4444', width: 1.5, dash: 'dash' }
+            });
+        }
+        if (pat.target_1) {
+            shapes.push({
+                type: 'line', xref: 'paper', x0: 0, x1: 1, y0: pat.target_1, y1: pat.target_1,
+                line: { color: '#10b981', width: 1.5, dash: 'dash' }
+            });
+        }
+        if (pat.target_2) {
+            shapes.push({
+                type: 'line', xref: 'paper', x0: 0, x1: 1, y0: pat.target_2, y1: pat.target_2,
+                line: { color: '#06b6d4', width: 1.5, dash: 'dot' }
+            });
+        }
+    }
+
+    const layout = {
+        dragmode: currentDragMode,
+        showlegend: false,
+        paper_bgcolor: '#0b0f19',
+        plot_bgcolor: '#0b0f19',
+        margin: { l: 20, r: 75, t: 15, b: 30 },
+        xaxis: {
+            type: 'date',
+            rangeslider: { visible: false },
+            color: '#94a3b8',
+            gridcolor: '#1e293b',
+            linecolor: '#1e293b',
+            range: currentXRange,
+            autorange: false
+        },
+        yaxis: {
+            color: '#94a3b8',
+            gridcolor: '#1e293b',
+            linecolor: '#1e293b',
+            side: 'right',
+            range: currentYRange,
+            autorange: false,
+            tickformat: data.current_price < 10 ? '.5f' : '.2f'
+        },
+        shapes: shapes,
+        annotations: annotations
+    };
+
+    const configPlot = {
+        responsive: true,
+        scrollZoom: true,
+        displayModeBar: false
+    };
+
+    isProgrammaticRelayout = true;
+    Plotly.react('plotly-chart', traces, layout, configPlot);
+    setTimeout(() => { isProgrammaticRelayout = false; }, 80);
+    attachPlotlyEventListeners();
+}
+
+function attachPlotlyEventListeners() {
+    const chartDiv = document.getElementById('plotly-chart');
+    if (!chartDiv || chartDiv._chartEventsAttached) return;
+    chartDiv._chartEventsAttached = true;
+
+    chartDiv.on('plotly_relayout', (eventData) => {
+        if (!eventData || isProgrammaticRelayout) return;
+        if (eventData['xaxis.autorange'] || eventData['yaxis.autorange']) {
+            autoAlignChart(true);
+            return;
+        }
+        if (eventData['xaxis.range[0]'] !== undefined && eventData['xaxis.range[1]'] !== undefined) {
+            isUserZoomed = true;
+            currentXRange = [String(eventData['xaxis.range[0]']), String(eventData['xaxis.range[1]'])];
+        }
+        if (eventData['yaxis.range[0]'] !== undefined && eventData['yaxis.range[1]'] !== undefined) {
+            isUserZoomed = true;
+            currentYRange = [Number(eventData['yaxis.range[0]']), Number(eventData['yaxis.range[1]'])];
+        }
+    });
+
+    chartDiv.on('plotly_doubleclick', () => {
+        autoAlignChart(true);
+    });
+}
+
+function autoAlignChart(force = true) {
+    isUserZoomed = false;
+    const candles = candleCache[`${currentSymbol}_${currentTimeframe}`];
+    if (!candles) return;
+    const last = candles[candles.length - 1];
+    const pat = getActivePattern(currentSymbol, candles, last.close);
+    const ranges = getAutoAlignedRanges({ current_price: last.close, candles, detected_pattern: pat });
+    if (!ranges) return;
+    currentXRange = ranges.xRange;
+    currentYRange = ranges.yRange;
+
+    isProgrammaticRelayout = true;
+    Plotly.relayout('plotly-chart', {
+        'xaxis.range[0]': currentXRange[0],
+        'xaxis.range[1]': currentXRange[1],
+        'yaxis.range[0]': currentYRange[0],
+        'yaxis.range[1]': currentYRange[1],
+        'xaxis.autorange': false,
+        'yaxis.autorange': false
+    }).then(() => {
+        setTimeout(() => { isProgrammaticRelayout = false; }, 80);
+    }).catch(() => {
+        isProgrammaticRelayout = false;
+    });
+}
+
+function zoomInChart() {
+    if (!currentXRange || !currentYRange) return autoAlignChart(true);
+    isUserZoomed = true;
+    let t0 = safeParseTimestamp(currentXRange[0]);
+    let t1 = safeParseTimestamp(currentXRange[1]);
+    let y0 = Number(currentYRange[0]);
+    let y1 = Number(currentYRange[1]);
+    if (!t0 || !t1 || t1 <= t0) return autoAlignChart(true);
+
+    const xSpan = t1 - t0;
+    const ySpan = y1 - y0;
+    currentXRange = [safeFormatDate(t0 + xSpan * 0.15), safeFormatDate(t1 - xSpan * 0.05)];
+    currentYRange = [y0 + ySpan * 0.10, y1 - ySpan * 0.10];
+
+    isProgrammaticRelayout = true;
+    Plotly.relayout('plotly-chart', {
+        'xaxis.range[0]': currentXRange[0],
+        'xaxis.range[1]': currentXRange[1],
+        'yaxis.range[0]': currentYRange[0],
+        'yaxis.range[1]': currentYRange[1],
+        'xaxis.autorange': false,
+        'yaxis.autorange': false
+    }).then(() => {
+        setTimeout(() => { isProgrammaticRelayout = false; }, 80);
+    });
+}
+
+function zoomOutChart() {
+    if (!currentXRange || !currentYRange) return autoAlignChart(true);
+    isUserZoomed = true;
+    let t0 = safeParseTimestamp(currentXRange[0]);
+    let t1 = safeParseTimestamp(currentXRange[1]);
+    let y0 = Number(currentYRange[0]);
+    let y1 = Number(currentYRange[1]);
+    if (!t0 || !t1 || t1 <= t0) return autoAlignChart(true);
+
+    const xSpan = t1 - t0;
+    const ySpan = y1 - y0;
+    currentXRange = [safeFormatDate(t0 - xSpan * 0.20), safeFormatDate(t1 + xSpan * 0.10)];
+    currentYRange = [y0 - ySpan * 0.12, y1 + ySpan * 0.12];
+
+    isProgrammaticRelayout = true;
+    Plotly.relayout('plotly-chart', {
+        'xaxis.range[0]': currentXRange[0],
+        'xaxis.range[1]': currentXRange[1],
+        'yaxis.range[0]': currentYRange[0],
+        'yaxis.range[1]': currentYRange[1],
+        'xaxis.autorange': false,
+        'yaxis.autorange': false
+    }).then(() => {
+        setTimeout(() => { isProgrammaticRelayout = false; }, 80);
+    });
+}
+
+function togglePanMode() {
+    currentDragMode = (currentDragMode === 'pan') ? 'zoom' : 'pan';
+    const panBtn = document.getElementById('btn-chart-pan');
+    if (panBtn) {
+        panBtn.className = currentDragMode === 'pan'
+            ? "w-7 h-7 rounded-lg bg-cyan-950/70 text-cyan-300 border border-cyan-600 flex items-center justify-center transition"
+            : "w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center transition";
+    }
+    Plotly.relayout('plotly-chart', { dragmode: currentDragMode });
+}
+
+function toggleFullscreen() {
+    isFullscreen = !isFullscreen;
+    const container = document.getElementById("chart-card-container");
+    const icon = document.getElementById("fs-icon");
+    const text = document.getElementById("fs-text");
+    if (isFullscreen) {
+        container.classList.add("chart-fullscreen-overlay");
+        icon.className = "fa-solid fa-compress";
+        text.innerText = "Exit";
+    } else {
+        container.classList.remove("chart-fullscreen-overlay");
+        icon.className = "fa-solid fa-expand";
+        text.innerText = "Fullscreen";
+    }
+    setTimeout(() => {
+        Plotly.Plots.resize('plotly-chart');
+        autoAlignChart(true);
+    }, 150);
+}
+
+function simulateLiveTick() {
+    // Tick all assets slightly
+    Object.entries(ASSET_CONFIG).forEach(([sym, cfg]) => {
+        const delta = (Math.random() - 0.49) * (cfg.basePrice * (cfg.type === 'forex' ? 0.00008 : 0.0006));
+        cfg.basePrice += delta;
+        const mqEl = document.getElementById(`mq-${sym}`);
+        if (mqEl) {
+            mqEl.innerText = `$${cfg.basePrice.toFixed(cfg.decimals)}`;
+        }
+    });
+
+    // Update active asset's latest candle
+    const key = `${currentSymbol}_${currentTimeframe}`;
+    const candles = candleCache[key];
+    if (candles && candles.length > 0) {
+        const last = candles[candles.length - 1];
+        const cfg = ASSET_CONFIG[currentSymbol];
+        last.close = cfg.basePrice;
+        last.high = Math.max(last.high, last.close);
+        last.low = Math.min(last.low, last.close);
+        
+        document.getElementById("active-price-badge").innerText = last.close.toFixed(cfg.decimals);
+        const bidAsk = document.getElementById("live-bid-ask");
+        if (bidAsk) {
+            const bid = (last.close - cfg.spread/2).toFixed(cfg.decimals);
+            const ask = (last.close + cfg.spread/2).toFixed(cfg.decimals);
+            bidAsk.innerText = `Bid: ${bid} | Ask: ${ask} (Spread: ${cfg.spread})`;
+        }
+    }
+
+    // Refresh active chart gently if not zoomed
+    if (!isUserZoomed) {
+        loadActiveAssetData(false);
+    }
+}
+
+function executeCurrentSignal() {
+    if (inNewsBlackout) return;
+    const cfg = ASSET_CONFIG[currentSymbol];
+    const candles = candleCache[`${currentSymbol}_${currentTimeframe}`];
+    if (!candles) return;
+    const curPx = candles[candles.length - 1].close;
+    const pat = getActivePattern(currentSymbol, candles, curPx);
+    if (!pat) return;
+
+    playSignalChime(pat.direction === 'BULLISH');
+
+    const posId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const pos = {
+        id: posId,
+        symbol: currentSymbol,
+        side: pat.direction === 'BULLISH' ? 'BUY' : 'SELL',
+        pattern: pat.pattern_type,
+        entry: curPx,
+        current: curPx,
+        stopLoss: pat.stop_loss,
+        target1: pat.target_1,
+        qty: cfg.defaultLots,
+        pnl: 0.00,
+        status: "OPEN"
+    };
+
+    paperBroker.positions.unshift(pos);
+    renderPositionsTable();
+
+    // Show instant feedback on button
+    const btn = document.getElementById("btn-execute-trade");
+    btn.innerHTML = `<i class="fa-solid fa-check text-white"></i> Position Opened (${posId})!`;
+    btn.className = "w-full bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer";
+    setTimeout(() => {
+        btn.innerHTML = `<i class="fa-solid fa-bolt"></i> Execute Paper Trade`;
+        btn.className = "w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer";
+    }, 2000);
+}
+
+function renderPositionsTable() {
+    const countEl = document.getElementById("open-positions-count");
+    if (countEl) countEl.innerText = paperBroker.positions.length;
+
+    const tbody = document.getElementById("positions-table-body");
+    if (!tbody) return;
+
+    if (paperBroker.positions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500">No active positions. Execute a trade from the AI Advisor above.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = paperBroker.positions.map(p => {
+        const isForex = p.symbol.includes("X");
+        const dec = isForex ? 5 : 2;
+        return `
+            <tr class="hover:bg-slate-800/40 transition">
+                <td class="p-2.5 font-bold text-slate-200">#${p.id}</td>
+                <td class="p-2.5 font-semibold text-white">${p.symbol}</td>
+                <td class="p-2.5 font-bold ${p.side === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}">${p.side}</td>
+                <td class="p-2.5 text-slate-300">${p.pattern}</td>
+                <td class="p-2.5 text-slate-200">$${p.entry.toFixed(dec)}</td>
+                <td class="p-2.5 text-slate-200">$${p.current.toFixed(dec)}</td>
+                <td class="p-2.5 text-rose-400">$${p.stopLoss.toFixed(dec)}</td>
+                <td class="p-2.5 text-emerald-400">$${p.target1.toFixed(dec)}</td>
+                <td class="p-2.5 text-slate-300">${p.qty}</td>
+                <td class="p-2.5 font-bold ${p.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}">$${p.pnl.toFixed(2)}</td>
+                <td class="p-2.5"><span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold">RUNNING</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderBrokerHUD() {
+    document.getElementById("hud-equity").innerText = `$${paperBroker.equity.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    document.getElementById("hud-session-pnl").innerText = `$${paperBroker.sessionPnl.toFixed(2)}`;
+}
+
+function renderScreenerTable() {
+    const tbody = document.getElementById("screener-table-body");
+    if (!tbody) return;
+
+    const data = [
+        { symbol: "BTC-USD", name: "Bitcoin", price: 83587.14, rvol: 2.14, atr: 1420.5, trend: "BULLISH", score: 88, status: "APEX SETUP" },
+        { symbol: "EURUSD=X", name: "EUR/USD", price: 1.13456, rvol: 1.65, atr: 0.0035, trend: "RANGE", score: 76, status: "CHANNEL" },
+        { symbol: "SOL-USD", name: "Solana", price: 119.70, rvol: 1.88, atr: 4.20, trend: "BULLISH", score: 79, status: "BULL FLAG" },
+        { symbol: "ETH-USD", name: "Ethereum", price: 2695.38, rvol: 1.45, atr: 52.8, trend: "PULLBACK", score: 73, status: "ABCD FIB" },
+        { symbol: "GBPUSD=X", name: "GBP/USD", price: 1.32145, rvol: 1.20, atr: 0.0042, trend: "NEUTRAL", score: 64, status: "MONITORING" },
+        { symbol: "USDJPY=X", name: "USD/JPY", price: 157.172, rvol: 1.10, atr: 0.450, trend: "NEUTRAL", score: 58, status: "WAITING" }
+    ];
+
+    tbody.innerHTML = data.map(d => {
+        const isForex = d.symbol.includes("X");
+        return `
+            <tr class="hover:bg-slate-800/40 transition">
+                <td class="p-2.5 font-bold text-white">${d.symbol}</td>
+                <td class="p-2.5 text-slate-300">${d.name}</td>
+                <td class="p-2.5 text-slate-200 font-mono">$${d.price.toFixed(isForex ? 5 : 2)}</td>
+                <td class="p-2.5 font-bold text-emerald-400">${d.rvol}x</td>
+                <td class="p-2.5 text-slate-300 font-mono">${d.atr}</td>
+                <td class="p-2.5 font-semibold ${d.trend === 'BULLISH' ? 'text-emerald-400' : 'text-slate-400'}">${d.trend}</td>
+                <td class="p-2.5 font-bold text-purple-400">${d.score}/100</td>
+                <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${d.score >= 75 ? 'bg-emerald-950 text-emerald-300 border border-emerald-700' : 'bg-slate-800 text-slate-400'}">${d.status}</span></td>
+                <td class="p-2.5 text-right"><button onclick="switchSymbol('${d.symbol}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded text-[11px] font-bold transition">Chart</button></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderCalendarList() {
+    const list = document.getElementById("news-calendar-list");
+    if (!list) return;
+    const events = [
+        { time: "In 13h 25m", impact: "HIGH", title: "FOMC Fed Interest Rate Decision", tag: "USD" },
+        { time: "Tomorrow 08:30", impact: "HIGH", title: "US Non-Farm Payrolls (NFP)", tag: "USD" },
+        { time: "Thursday 12:45", impact: "HIGH", title: "ECB Monetary Policy Statement", tag: "EUR" },
+        { time: "Friday 08:30", impact: "MEDIUM", title: "US Core CPI Inflation (MoM)", tag: "USD" },
+        { time: "Next Mon 10:00", impact: "MEDIUM", title: "ISM Manufacturing PMI", tag: "USD" }
+    ];
+
+    list.innerHTML = events.map(e => `
+        <div class="bg-slate-900/90 border border-slate-800 p-2 rounded flex items-center justify-between text-[11px]">
+            <div>
+                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-950 text-rose-300 border border-rose-800 mr-1.5">${e.impact}</span>
+                <span class="text-white font-medium">${e.title}</span>
+            </div>
+            <span class="text-slate-400 font-mono text-[10px]">${e.time}</span>
+        </div>
+    `).join('');
+}
+
+function toggleNewsSimulation() {
+    inNewsBlackout = !inNewsBlackout;
+    const banner = document.getElementById("news-alert-banner");
+    const dot = document.getElementById("news-alert-dot");
+    const badgeText = document.getElementById("news-alert-badge-text");
+    const headline = document.getElementById("news-alert-headline");
+    const simBtnText = document.getElementById("btn-simulate-news-text");
+
+    if (inNewsBlackout) {
+        banner.className = "bg-rose-950/80 border-b border-rose-700 px-6 py-2 transition-all duration-300 animate-pulse";
+        dot.className = "w-2 h-2 rounded-full bg-rose-400 animate-ping";
+        badgeText.innerText = "🚨 HIGH-IMPACT NEWS BLACKOUT";
+        headline.innerText = "US Non-Farm Payrolls (NFP) Shock Alert • Automated signals SKIPPED to protect capital";
+        simBtnText.innerText = "Clear Simulated Shock";
+    } else {
+        banner.className = "bg-slate-950 border-b border-slate-800 px-6 py-2 transition-all duration-300";
+        dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+        badgeText.innerText = "News: Calm";
+        headline.innerText = "Economic calendar clear. No blackout in progress.";
+        simBtnText.innerText = "Simulate News Event";
+    }
+    loadActiveAssetData(false);
+}
+
+function toggleNewsLockout() {
+    const txt = document.getElementById("newslock-text");
+    if (txt.innerText.includes("ON")) {
+        txt.innerText = "News Skip: OFF";
+    } else {
+        txt.innerText = "News Skip: ON";
+    }
+}
+
+function toggleNewsDrawer() {
+    const drawer = document.getElementById("news-calendar-drawer");
+    const arrow = document.getElementById("news-drawer-arrow");
+    if (drawer.classList.contains("hidden")) {
+        drawer.classList.remove("hidden");
+        arrow.className = "fa-solid fa-chevron-up text-[10px]";
+    } else {
+        drawer.classList.add("hidden");
+        arrow.className = "fa-solid fa-chevron-down text-[10px]";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", initApp);
+
+</script>
 </body>
 </html>

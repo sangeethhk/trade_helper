@@ -1,0 +1,17 @@
+[Unit]
+Description=ElderAlpha Trading Helper AI 24/7 Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/tradinghelper
+ExecStart=/opt/tradinghelper/venv/bin/python /opt/tradinghelper/run_dashboard.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Environment=HOST=0.0.0.0
+Environment=PORT=8000
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+venv/
+.venv/
+.system_generated/
+.idea/
+.vscode/
+
+# Keep trained models and database
+!models/
+!calibrations.json
+!trading_journal.db

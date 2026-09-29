@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  trading-helper:
+    build: .
+    container_name: elderalpha-tradinghelper
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Persistent storage for trained AI models, calibrations, and trade journal
+      - ./models:/app/models
+      - ./calibrations.json:/app/calibrations.json
+      - ./trading_journal.db:/app/trading_journal.db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

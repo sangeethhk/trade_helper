@@ -1,0 +1,74 @@
+{
+  "EURUSD=X": {
+    "symbol": "EURUSD=X",
+    "atr_stop_multiplier": 1.37,
+    "atr_trail_multiplier": 1.8,
+    "abcd_min_pullback_fib": 0.4,
+    "abcd_max_pullback_fib": 0.618,
+    "bull_flag_max_consolidation_bars": 6,
+    "bull_flag_min_pole_pct": 0.0035,
+    "rvol_threshold": 1.5,
+    "learned_win_rate_weight": 1.0,
+    "last_calibrated_at": "2026-09-29 23:29:36"
+  },
+  "BTC-USD": {
+    "symbol": "BTC-USD",
+    "atr_stop_multiplier": 2.11,
+    "atr_trail_multiplier": 2.61,
+    "abcd_min_pullback_fib": 0.382,
+    "abcd_max_pullback_fib": 0.65,
+    "bull_flag_max_consolidation_bars": 9,
+    "bull_flag_min_pole_pct": 0.009,
+    "rvol_threshold": 1.81,
+    "learned_win_rate_weight": 1.0,
+    "last_calibrated_at": "2026-09-29 23:29:36"
+  },
+  "GBPUSD=X": {
+    "symbol": "GBPUSD=X",
+    "atr_stop_multiplier": 1.38,
+    "atr_trail_multiplier": 1.8,
+    "abcd_min_pullback_fib": 0.4,
+    "abcd_max_pullback_fib": 0.618,
+    "bull_flag_max_consolidation_bars": 6,
+    "bull_flag_min_pole_pct": 0.0035,
+    "rvol_threshold": 1.5,
+    "learned_win_rate_weight": 1.0,
+    "last_calibrated_at": "2026-09-29 23:22:31"
+  },
+  "USDJPY=X": {
+    "symbol": "USDJPY=X",
+    "atr_stop_multiplier": 1.43,
+    "atr_trail_multiplier": 1.8,
+    "abcd_min_pullback_fib": 0.4,
+    "abcd_max_pullback_fib": 0.618,
+    "bull_flag_max_consolidation_bars": 6,
+    "bull_flag_min_pole_pct": 0.0035,
+    "rvol_threshold": 1.5,
+    "learned_win_rate_weight": 1.0,
+    "last_calibrated_at": "2026-09-29 23:22:35"
+  },
+  "ETH-USD": {
+    "symbol": "ETH-USD",
+    "atr_stop_multiplier": 2.12,
+    "atr_trail_multiplier": 2.61,
+    "abcd_min_pullback_fib": 0.382,
+    "abcd_max_pullback_fib": 0.65,
+    "bull_flag_max_consolidation_bars": 9,
+    "bull_flag_min_pole_pct": 0.0109,
+    "rvol_threshold": 1.95,
+    "learned_win_rate_weight": 1.0,
+    "last_calibrated_at": "2026-09-29 23:22:40"
+  },
+  "SOL-USD": {
+    "symbol": "SOL-USD",
+    "atr_stop_multiplier": 2.12,
+    "atr_trail_multiplier": 2.61,
+    "abcd_min_pullback_fib": 0.382,
+    "abcd_max_pullback_fib": 0.65,
+    "bull_flag_max_consolidation_bars": 9,
+    "bull_flag_min_pole_pct": 0.0139,
+    "rvol_threshold": 2.22,
+    "learned_win_rate_weight": 1.0,
+    "last_calibrated_at": "2026-09-29 23:22:45"
+  }
+}

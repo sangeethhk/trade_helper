@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElderAlpha - Day Trading Helper AI</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Header -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex flex-wrap justify-between items-center sticky top-0 z-50 shadow-md">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400 font-bold text-lg">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    ElderAlpha AI
+                    <span class="text-xs bg-emerald-950 border border-emerald-700/50 text-emerald-400 px-2 py-0.5 rounded font-mono">v1.0 • Elder Book 2</span>
+                </h1>
+                <p class="text-xs text-slate-400">Autonomous Calibration & Movement Learning Trading Assistant</p>
+            </div>
+        </div>
+
+        <!-- HUD: Live Status, Circuit Breakers & Session Gain Lock -->
+        <div class="flex items-center space-x-4 text-xs font-mono">
+            <div id="live-indicator" class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-950/80 border border-emerald-500/50 text-emerald-400 font-bold text-[11px]">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>LIVE FEED</span>
+            </div>
+            <div class="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
+                <span class="text-slate-400">Equity:</span>
+                <span id="hud-equity" class="text-emerald-400 font-bold">$10,000.00</span>
+            </div>
+            <div class="bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-2">
+                <span class="text-slate-400">Session P/L:</span>
+                <span id="hud-session-pnl" class="text-slate-200 font-bold">$0.00</span>
+            </div>
+            <div id="hud-circuit-badge" class="px-3 py-1.5 rounded-lg border border-emerald-600/40 bg-emerald-950/40 text-emerald-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span id="hud-circuit-text">Risk: Safe</span>
+            </div>
+            <div id="hud-gain-badge" class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-900 text-slate-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-lock"></i>
+                <span id="hud-gain-text">Gain Lock: Inactive</span>
+            </div>
+            <button id="btn-audio-toggle" title="Toggle Sound Chimes" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-2.5 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer">
+                <i class="fa-solid fa-volume-high"></i>
+            </button>
+            <button id="btn-refresh" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span>Refresh</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Real-Time Live Ticker Marquee Strip -->
+    <div id="live-marquee-bar" class="bg-slate-950/90 border-b border-slate-800/80 px-6 py-1.5 flex items-center space-x-6 overflow-x-auto text-[11px] font-mono">
+        <span class="text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
+            <i class="fa-solid fa-bolt text-amber-400"></i> Live Watchlist:
+        </span>
+        <div id="marquee-items" class="flex items-center space-x-6 shrink-0">
+            <span class="text-slate-400">Connecting to live market flux...</span>
+        </div>
+    </div>
+
+    <!-- High-Impact Economic News Alert & Blackout Banner (Andrew Elder Ch 4) -->
+    <div id="news-alert-banner" class="bg-slate-950 border-b border-slate-800 px-6 py-2 transition-all duration-300">
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center space-x-3">
+                <span id="news-alert-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 flex items-center gap-1.5 border border-slate-700">
+                    <span id="news-alert-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span id="news-alert-badge-text">News: Calm</span>
+                </span>
+                <span id="news-alert-headline" class="text-slate-300 font-medium text-xs">
+                    Economic calendar clear. No blackout in progress.
+                </span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <!-- Toggle news lockout switch -->
+                <button id="btn-toggle-newslock" class="px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-700/60 hover:bg-emerald-900 transition flex items-center gap-1 cursor-pointer" title="Elder Rule: Automatically skip trading 30m before and after high-impact releases">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span id="newslock-text">News Skip: ON</span>
+                </button>
+                <!-- Simulate test event button -->
+                <button id="btn-simulate-news" class="px-2 py-1 rounded text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition flex items-center gap-1 cursor-pointer" title="Simulate a High-Impact News Shock to test trade skipping">
+                    <i class="fa-solid fa-bolt-lightning text-amber-400"></i>
+                    <span id="btn-simulate-news-text">Simulate News Event</span>
+                </button>
+                <!-- View economic calendar drawer toggle -->
+                <button id="btn-toggle-news-drawer" class="px-2 py-1 rounded text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-calendar-days text-cyan-400"></i>
+                    <span>Calendar</span>
+                    <i id="news-drawer-arrow" class="fa-solid fa-chevron-down text-[10px]"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Expandable Economic Calendar Drawer -->
+        <div id="news-calendar-drawer" class="hidden mt-3 pt-3 border-t border-slate-800/80">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-400 font-bold uppercase tracking-wider text-[11px] flex items-center gap-1">
+                    <i class="fa-solid fa-newspaper text-cyan-400"></i> High-Impact Macro & Crypto Calendar
+                </span>
+                <span class="text-[10px] text-slate-500 italic">Elder Rule: Trade signals are automatically skipped 30m before to 30m after high-impact events.</span>
+            </div>
+            <div id="news-calendar-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                <!-- Populated dynamically via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Subheader: Market & Asset Controls -->
+    <div class="bg-slate-900/60 border-b border-slate-800 px-6 py-2.5 flex flex-wrap justify-between items-center gap-4">
+        <!-- Asset Selectors -->
+        <div class="flex items-center space-x-4">
+            <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
+                <i class="fa-solid fa-globe text-cyan-400"></i> Forex:
+            </span>
+            <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium rounded-l-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 active-asset" data-symbol="EURUSD=X">EUR/USD</button>
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium border-t border-b border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="GBPUSD=X">GBP/USD</button>
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium rounded-r-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="USDJPY=X">USD/JPY</button>
+            </div>
+
+            <div class="h-4 w-px bg-slate-700"></div>
+
+            <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
+                <i class="fa-brands fa-bitcoin text-amber-400"></i> Crypto:
+            </span>
+            <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium rounded-l-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="BTC-USD">BTC/USD</button>
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium border-t border-b border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="ETH-USD">ETH/USD</button>
+                <button type="button" class="asset-btn px-3 py-1 text-xs font-medium rounded-r-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" data-symbol="SOL-USD">SOL/USD</button>
+            </div>
+        </div>
+
+        <!-- Timeframe & Risk Parameters -->
+        <div class="flex items-center space-x-4">
+            <span class="text-xs text-slate-400 font-semibold">Timeframe:</span>
+            <div class="inline-flex rounded-md" role="group">
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border border-slate-700 bg-slate-800 hover:bg-slate-700 rounded-l-lg" data-tf="1m">1m</button>
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border-t border-b border-slate-700 bg-slate-800 hover:bg-slate-700" data-tf="5m">5m</button>
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border border-slate-700 bg-slate-800 hover:bg-slate-700 active-tf" data-tf="15m">15m</button>
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border-t border-b border-slate-700 bg-slate-800 hover:bg-slate-700" data-tf="1h">1h</button>
+                <button class="tf-btn px-2.5 py-1 text-xs font-medium border border-slate-700 bg-slate-800 hover:bg-slate-700 rounded-r-lg" data-tf="1d">1d</button>
+            </div>
+
+            <div class="h-4 w-px bg-slate-700"></div>
+
+            <div class="flex items-center space-x-2 text-xs">
+                <span class="text-slate-400">Risk/Trade:</span>
+                <select id="select-risk-pct" class="bg-slate-800 border border-slate-700 text-emerald-400 rounded px-2 py-1 text-xs focus:ring-1 focus:ring-emerald-500 font-mono">
+                    <option value="0.0025" selected>0.25% (Elder Beginner Rule)</option>
+                    <option value="0.0050">0.50% (Moderate Risk)</option>
+                    <option value="0.0100">1.00% (Maximum Cap)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Workspace Layout -->
+    <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Live Chart & Indicators (8 cols) -->
+        <section class="lg:col-span-8 flex flex-col space-y-4">
+            <!-- Chart Container Card with Fullscreen Support -->
+            <div id="chart-card-container" class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex-1 flex flex-col min-h-[560px] transition-all duration-300">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
+                    <div class="flex items-center space-x-3">
+                        <span id="active-symbol-title" class="text-base font-bold text-white tracking-wide">EUR/USD (15m)</span>
+                        <span id="active-price-badge" class="text-xs font-mono font-bold px-2.5 py-1 bg-slate-800 border border-slate-700 rounded text-emerald-400">1.08500</span>
+                        <span id="active-pattern-badge" class="text-xs font-semibold px-2 py-0.5 bg-cyan-950/60 border border-cyan-700/50 text-cyan-300 rounded hidden">
+                            <i class="fa-solid fa-crosshairs mr-1"></i> <span id="active-pattern-text">ABCD Pattern</span>
+                        </span>
+                    </div>
+
+                    <!-- Chart Controls: Auto-Align, Zoom In, Zoom Out, Pan, Fullscreen -->
+                    <div class="flex items-center space-x-2 text-xs font-mono">
+                        <!-- Legend -->
+                        <div class="hidden xl:flex items-center space-x-3 text-slate-400 mr-2 border-r border-slate-800 pr-3">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span> EMA 9</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> EMA 20</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-emerald-400 inline-block"></span> Targets</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-0.5 bg-rose-400 inline-block"></span> Stop</span>
+                        </div>
+
+                        <!-- Auto-Align Button -->
+                        <button id="btn-chart-align" title="Auto-Align Chart (Hotkey: A or R)" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-400 border border-emerald-700/60 flex items-center gap-1.5 font-bold transition shadow-sm cursor-pointer">
+                            <i class="fa-solid fa-arrows-to-eye"></i>
+                            <span>Auto-Align</span>
+                        </button>
+
+                        <!-- Zoom In (+) -->
+                        <button id="btn-chart-zoom-in" title="Zoom In (Hotkey: +)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center transition cursor-pointer">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                        </button>
+
+                        <!-- Zoom Out (-) -->
+                        <button id="btn-chart-zoom-out" title="Zoom Out (Hotkey: -)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center justify-center transition cursor-pointer">
+                            <i class="fa-solid fa-magnifying-glass-minus"></i>
+                        </button>
+
+                        <!-- Pan / Drag Toggle -->
+                        <button id="btn-chart-pan" title="Toggle Pan / Drag mode (Hotkey: P)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 flex items-center justify-center transition cursor-pointer">
+                            <i class="fa-solid fa-hand"></i>
+                        </button>
+
+                        <!-- Fullscreen Toggle -->
+                        <button id="btn-chart-fullscreen" title="Toggle Fullscreen (Hotkey: F)" class="px-2.5 py-1.5 rounded-lg bg-purple-950/70 hover:bg-purple-900/90 text-purple-300 border border-purple-700/60 flex items-center gap-1.5 font-bold transition cursor-pointer">
+                            <i id="fs-icon" class="fa-solid fa-expand"></i>
+                            <span id="fs-text">Fullscreen</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Plotly Candlestick Graph -->
+                <div id="plotly-chart" class="w-full flex-1 min-h-[500px]"></div>
+            </div>
+
+            <!-- Lower Quick Stats: ATR, RVOL, MFI, Pivots -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                    <span class="text-xs text-slate-400 block mb-1">ATR (14) Volatility</span>
+                    <span id="stat-atr" class="text-sm font-bold font-mono text-white">0.00120</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                    <span class="text-xs text-slate-400 block mb-1">Relative Volume (RVOL)</span>
+                    <span id="stat-rvol" class="text-sm font-bold font-mono text-emerald-400">2.14x</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                    <span class="text-xs text-slate-400 block mb-1">Money Flow Index (MFI)</span>
+                    <span id="stat-mfi" class="text-sm font-bold font-mono text-cyan-400">54.2</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                    <span class="text-xs text-slate-400 block mb-1">Central Floor Pivot</span>
+                    <span id="stat-pivot" class="text-sm font-bold font-mono text-amber-400">1.08450</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: AI Signal, Movement Learner, Risk, Options (4 cols) -->
+        <section class="lg:col-span-4 flex flex-col space-y-4">
+
+            <!-- Card 0: Live Market Decision Copilot (Go / No-Go) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-2.5">
+                    <h2 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-traffic-light text-cyan-400"></i> Live Market Copilot
+                    </h2>
+                    <span id="live-bid-ask" class="text-[11px] font-mono text-slate-400">Bid: -- | Ask: --</span>
+                </div>
+
+                <!-- Prominent Verdict Banner -->
+                <div id="verdict-banner" class="p-3 rounded-lg border border-slate-700 bg-slate-950/80 mb-3 flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">Elder Session Verdict</span>
+                        <span id="verdict-status" class="text-sm font-bold text-amber-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-hand text-amber-400"></i> NO-GO (WAITING)
+                        </span>
+                    </div>
+                    <span id="verdict-subtext" class="text-[11px] text-right font-mono text-slate-400">
+                        Scan in progress...
+                    </span>
+                </div>
+
+                <!-- 5-Point Live Checklist (Elder Book 2 Rules) -->
+                <div class="space-y-1.5 text-xs bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-arrows-split-up-and-left mr-1 text-slate-500"></i> Spread Cost:</span>
+                        <span id="chk-spread" class="text-emerald-400 font-mono font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Tight (< 1.5 pips)</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-calendar-xmark mr-1 text-slate-500"></i> Macro News Blackout:</span>
+                        <span id="chk-news" class="text-emerald-400 font-mono font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Clear (No NFP/FOMC)</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-shapes mr-1 text-slate-500"></i> Pattern at Structure:</span>
+                        <span id="chk-pattern" class="text-slate-500 font-mono font-semibold"><i class="fa-solid fa-circle-xmark mr-1"></i> Waiting</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-brain mr-1 text-slate-500"></i> Movement AI Edge:</span>
+                        <span id="chk-movement" class="text-slate-500 font-mono font-semibold"><i class="fa-solid fa-circle-xmark mr-1"></i> Neutral</span>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px]">
+                        <span class="text-slate-400"><i class="fa-solid fa-shield-virus mr-1 text-slate-500"></i> Risk & Circuit Check:</span>
+                        <span id="chk-circuit" class="text-emerald-400 font-mono font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Safe (0.25%)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 1: AI Trade Signal & Execution -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-robot text-emerald-400"></i> AI Trade Advisor
+                    </h2>
+                    <span id="ai-action-badge" class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-slate-800 text-slate-300">
+                        MONITORING
+                    </span>
+                </div>
+
+                <div id="ai-signal-body" class="space-y-3">
+                    <div class="p-3 bg-slate-950/70 border border-slate-800/80 rounded-lg">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Detected Pattern:</span>
+                            <span id="ai-pattern-name" class="font-bold text-slate-200">Scanning price action...</span>
+                        </div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">AI Confidence:</span>
+                            <span id="ai-confidence" class="font-bold text-emerald-400 font-mono">--%</span>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Expected Payout Ratio:</span>
+                            <span id="ai-payout-ratio" class="font-bold text-cyan-400 font-mono">-- (Target: >= 2.0R)</span>
+                        </div>
+                    </div>
+
+                    <!-- Price Level Plan -->
+                    <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[11px]">Entry Price</span>
+                            <span id="ai-entry-price" class="font-bold text-white">--</span>
+                        </div>
+                        <div class="bg-rose-950/20 p-2 rounded border border-rose-900/40">
+                            <span class="text-rose-400 block text-[11px]">Stop Loss (ATR)</span>
+                            <span id="ai-stop-loss" class="font-bold text-rose-400">--</span>
+                        </div>
+                        <div class="bg-emerald-950/20 p-2 rounded border border-emerald-900/40">
+                            <span class="text-emerald-400 block text-[11px]">Target 1 (50% Out)</span>
+                            <span id="ai-target-1" class="font-bold text-emerald-400">--</span>
+                        </div>
+                        <div class="bg-cyan-950/20 p-2 rounded border border-cyan-900/40">
+                            <span class="text-cyan-400 block text-[11px]">Target 2 (Runner)</span>
+                            <span id="ai-target-2" class="font-bold text-cyan-400">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Position Sizing Output (0.25% Rule) -->
+                    <div class="p-3 bg-emerald-950/10 border border-emerald-800/30 rounded-lg text-xs">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-slate-400">Calculated Position Size:</span>
+                            <span id="ai-position-size" class="font-bold text-emerald-300 font-mono">--</span>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400">
+                            <span>Max Risk Allowed:</span>
+                            <span id="ai-max-risk" class="font-mono text-slate-300">$25.00 (0.25%)</span>
+                        </div>
+                    </div>
+
+                    <p id="ai-rationale" class="text-xs text-slate-400 italic">
+                        Awaiting high-probability pattern confirmation near support or resistance structure.
+                    </p>
+
+                    <button id="btn-execute-trade" class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer" disabled>
+                        <i class="fa-solid fa-bolt"></i> Execute Paper Trade
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card 2: Dynamic Calibration & Movement Learning Engine with Auto-Training HUD -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-brain text-purple-400"></i> Movement Learner & Calibrator
+                    </h2>
+                    <div class="flex items-center space-x-1.5">
+                        <button id="btn-toggle-autotrain" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-950/80 text-emerald-400 border border-emerald-600/70 hover:bg-emerald-900 transition flex items-center gap-1 cursor-pointer" title="Click to Toggle Autonomous Continuous Training">
+                            <span id="autotrain-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="autotrain-status-text">Auto-Train: ON</span>
+                        </button>
+                        <span id="learner-status-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-700/50 text-purple-300 font-mono">
+                            PyTorch + GB
+                        </span>
+                    </div>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <!-- Gauge / Probability -->
+                    <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-lg">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-slate-400">Continuation Probability:</span>
+                            <span id="ai-continuation-prob" class="font-bold text-purple-400 font-mono">--%</span>
+                        </div>
+                        <!-- Progress bar -->
+                        <div class="w-full bg-slate-800 rounded-full h-2 mb-2 overflow-hidden">
+                            <div id="prob-progress-bar" class="bg-gradient-to-r from-purple-500 to-emerald-400 h-2 rounded-full" style="width: 50%"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400">
+                            <span>Signal Quality:</span>
+                            <span id="ai-signal-quality" class="text-slate-200 font-medium">NEUTRAL</span>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
+                            <span>Learned Samples:</span>
+                            <span id="ai-model-status" class="text-purple-300 font-mono font-medium">1,085 Quality Trades</span>
+                        </div>
+                    </div>
+
+                    <!-- Active Calibrated Parameters -->
+                    <div class="grid grid-cols-2 gap-2 font-mono text-[11px]">
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[10px]">ATR Stop Mult</span>
+                            <span id="param-atr-stop" class="text-purple-300 font-bold">1.50x</span>
+                        </div>
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[10px]">ATR Trail Mult</span>
+                            <span id="param-atr-trail" class="text-purple-300 font-bold">2.00x</span>
+                        </div>
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[10px]">Fib Pullback C</span>
+                            <span id="param-fib-c" class="text-purple-300 font-bold">0.382 - 0.618</span>
+                        </div>
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[10px]">RVOL Trigger</span>
+                            <span id="param-rvol-trigger" class="text-purple-300 font-bold">1.80x</span>
+                        </div>
+                    </div>
+
+                    <!-- Autonomous Training Status Banner -->
+                    <div class="p-2.5 bg-slate-950/80 border border-slate-800/80 rounded-lg text-[11px] space-y-1">
+                        <div class="flex justify-between items-center text-slate-400">
+                            <span class="flex items-center gap-1">
+                                <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i> Autonomous Engine:
+                            </span>
+                            <span id="autotrain-status-pill" class="text-emerald-400 font-mono font-semibold">Active (Every 6h)</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400 text-[10px]">
+                            <span>Last Trained Profile:</span>
+                            <span id="autotrain-last-info" class="text-slate-300 font-mono font-medium truncate max-w-[170px]">BTC: 1,085 trades (77.2% Win)</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btn-calibrate-now" class="bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-700/60 font-medium py-1.5 px-2 rounded-lg text-[11px] transition flex items-center justify-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Train Current</span>
+                        </button>
+                        <button id="btn-train-all-assets" class="bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 font-medium py-1.5 px-2 rounded-lg text-[11px] transition flex items-center justify-center gap-1 cursor-pointer" title="Autonomously train all Forex & Crypto watchlist in background">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Retrain All (BG)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Options, Derivatives & Hedging Advisor -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <h2 class="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-amber-400"></i> Elder Derivative & Hedging Advisory
+                </h2>
+                <div class="text-xs space-y-1.5 bg-slate-950/60 p-3 rounded-lg border border-slate-800">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Recommended Structure:</span>
+                        <span id="opt-structure" class="font-bold text-amber-300">--</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Market Bias:</span>
+                        <span id="opt-bias" class="text-slate-200">--</span>
+                    </div>
+                    <p id="opt-rationale" class="text-[11px] text-slate-400 pt-1 border-t border-slate-800/80">
+                        Evaluating volatility compression and Money Flow Index...
+                    </p>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Bottom Tabbed Section: Apex Screener / Open Positions / Trade Journal -->
+    <section class="px-6 pb-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+            <!-- Tab Headers -->
+            <div class="flex border-b border-slate-800 bg-slate-950/50 px-4">
+                <button class="bottom-tab px-4 py-3 text-xs font-bold uppercase tracking-wider text-emerald-400 border-b-2 border-emerald-500 active-tab" data-target="tab-screener">
+                    <i class="fa-solid fa-radar mr-1.5"></i> Apex Predator Screener
+                </button>
+                <button class="bottom-tab px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 border-b-2 border-transparent" data-target="tab-positions">
+                    <i class="fa-solid fa-briefcase mr-1.5"></i> Active Paper Positions (<span id="open-positions-count">0</span>)
+                </button>
+                <button class="bottom-tab px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 border-b-2 border-transparent" data-target="tab-journal">
+                    <i class="fa-solid fa-book-bookmark mr-1.5"></i> Elder Trade & Mental Journal
+                </button>
+            </div>
+
+            <!-- Tab 1: Apex Predator Screener -->
+            <div id="tab-screener" class="tab-content p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <p class="text-xs text-slate-400">
+                        Andrew Elder Ch 24: Scans for Apex high-momentum candidates (RVOL &ge; 2.0x, high ATR volatility, and trend alignment).
+                    </p>
+                    <button id="btn-scan-market" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded border border-slate-700">
+                        <i class="fa-solid fa-magnifying-glass mr-1"></i> Scan Markets
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="text-[11px] text-slate-400 bg-slate-950/80 uppercase">
+                            <tr>
+                                <th class="p-2.5">Symbol</th>
+                                <th class="p-2.5">Asset</th>
+                                <th class="p-2.5">Price</th>
+                                <th class="p-2.5">RVOL</th>
+                                <th class="p-2.5">ATR Volatility</th>
+                                <th class="p-2.5">Trend</th>
+                                <th class="p-2.5">Predator Score</th>
+                                <th class="p-2.5">Status</th>
+                                <th class="p-2.5 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="screener-table-body" class="divide-y divide-slate-800">
+                            <tr><td colspan="9" class="p-4 text-center text-slate-500">Loading Apex Screener results...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 2: Active Positions -->
+            <div id="tab-positions" class="tab-content p-4 hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="text-[11px] text-slate-400 bg-slate-950/80 uppercase">
+                            <tr>
+                                <th class="p-2.5">Position ID</th>
+                                <th class="p-2.5">Symbol</th>
+                                <th class="p-2.5">Side</th>
+                                <th class="p-2.5">Pattern</th>
+                                <th class="p-2.5">Entry</th>
+                                <th class="p-2.5">Current</th>
+                                <th class="p-2.5">Stop Loss</th>
+                                <th class="p-2.5">Target 1</th>
+                                <th class="p-2.5">Remaining Qty</th>
+                                <th class="p-2.5">Unrealized P/L</th>
+                                <th class="p-2.5">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-table-body" class="divide-y divide-slate-800">
+                            <tr><td colspan="11" class="p-4 text-center text-slate-500">No active positions. Execute a trade from the AI Advisor above.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 3: Trade & Mental Journal -->
+            <div id="tab-journal" class="tab-content p-4 hidden">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div class="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block">Hit Rate (Win Rate)</span>
+                        <span id="journal-hit-rate" class="text-base font-bold text-emerald-400 font-mono">--%</span>
+                    </div>
+                    <div class="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block">Payout Ratio (Target &ge; 2.0)</span>
+                        <span id="journal-payout-ratio" class="text-base font-bold text-cyan-400 font-mono">--</span>
+                    </div>
+                    <div class="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block">Profit Factor</span>
+                        <span id="journal-profit-factor" class="text-base font-bold text-purple-400 font-mono">--</span>
+                    </div>
+                    <div class="bg-slate-950/70 p-3 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block">Net Realized P/L</span>
+                        <span id="journal-net-pnl" class="text-base font-bold text-white font-mono">$0.00</span>
+                    </div>
+                </div>
+
+                <div id="journal-warnings-box" class="mb-4 hidden p-3 bg-amber-950/30 border border-amber-800/50 rounded-lg text-xs text-amber-300">
+                    <!-- Dynamic Elder warnings -->
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs font-mono">
+                        <thead class="text-[11px] text-slate-400 bg-slate-950/80 uppercase">
+                            <tr>
+                                <th class="p-2.5">Date</th>
+                                <th class="p-2.5">Symbol</th>
+                                <th class="p-2.5">Side</th>
+                                <th class="p-2.5">Pattern</th>
+                                <th class="p-2.5">Entry</th>
+                                <th class="p-2.5">Exit</th>
+                                <th class="p-2.5">P/L ($)</th>
+                                <th class="p-2.5">P/L (%)</th>
+                                <th class="p-2.5">Exit Reason</th>
+                                <th class="p-2.5">Mental State</th>
+                            </tr>
+                        </thead>
+                        <tbody id="journal-table-body" class="divide-y divide-slate-800">
+                            <tr><td colspan="10" class="p-4 text-center text-slate-500">No journal logs recorded yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="mt-auto bg-slate-950 border-t border-slate-800/80 py-3 px-6 text-center text-xs text-slate-500">
+        ElderAlpha Trading Helper AI • Codifying Andrew Elder's <em>Day Trading Strategies</em> • Risk First, Profits Second
+    </footer>
+
+    <!-- Frontend Script -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

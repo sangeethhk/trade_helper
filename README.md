@@ -10,10 +10,10 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg?logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Live%20Demo-yellow)](https://huggingface.co/spaces/sangeethhk/trade-helper)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[**Live Dashboard**](#-interactive-web-dashboard) • [**Key Features**](#-key-features) • [**Quickstart**](#-quick-start) • [**Codified Elder Rules**](#-andrew-elder-book-2-codification) • [**Cloud 24/7**](#-247-cloud-deployment) • [**Contributing**](#-contributing)
+[**🌐 Live Hugging Face Demo**](https://huggingface.co/spaces/sangeethhk/trade-helper) • [**Key Features**](#-key-features) • [**Quickstart**](#-quick-start) • [**Codified Elder Rules**](#-andrew-elder-book-2-codification) • [**Cloud 24/7**](#-247-cloud-deployment) • [**Contributing**](#-contributing)
 
 </div>
 

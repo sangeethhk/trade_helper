@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElderAlpha AI - Interactive Trading Helper Demo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0b0f19; }
+        .active-asset { background-color: #0284c7 !important; color: #ffffff !important; border-color: #38bdf8 !important; }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header Navbar -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3.5 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-tr from-cyan-600 to-emerald-400 p-2 rounded-lg text-slate-950 font-black text-lg">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold text-white tracking-wide flex items-center gap-2">
+                    ElderAlpha AI <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-600 font-mono">Hugging Face Live Demo</span>
+                </h1>
+                <p class="text-xs text-slate-400">Codifying Andrew Elder: Day Trading Strategies (Book 2)</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <a href="https://github.com/sangeethhk/trade_helper" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 shadow">
+                <i class="fa-brands fa-github text-sm"></i>
+                <span>View on GitHub</span>
+                <span class="px-1.5 py-0.2 rounded bg-slate-900 text-amber-400 text-[10px] ml-1">★ Star</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- News Blackout Alert Banner -->
+    <div id="news-alert-banner" class="bg-slate-950 border-b border-slate-800 px-6 py-2 transition-all duration-300">
+        <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center space-x-3">
+                <span id="news-badge" class="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 flex items-center gap-1.5 border border-slate-700">
+                    <span id="news-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span id="news-badge-text">Economic News: Calm</span>
+                </span>
+                <span id="news-headline" class="text-slate-300 font-medium">
+                    Economic calendar clear. No high-impact blackout in progress.
+                </span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="btn-simulate-news" onclick="toggleNewsSimulation()" class="px-2.5 py-1 rounded text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition flex items-center gap-1 cursor-pointer">
+                    <i class="fa-solid fa-bolt-lightning text-amber-400"></i>
+                    <span id="sim-btn-text">Simulate High-Impact News Shock</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subheader: Asset Switcher -->
+    <div class="bg-slate-900/60 border-b border-slate-800 px-6 py-2.5 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center space-x-4">
+            <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
+                <i class="fa-brands fa-bitcoin text-amber-400"></i> Crypto:
+            </span>
+            <div class="inline-flex rounded-md shadow-sm">
+                <button onclick="selectAsset('BTC-USD')" id="btn-btc" class="asset-btn active-asset px-3 py-1 text-xs font-medium rounded-l-lg border border-slate-700 bg-slate-800 text-slate-200">BTC/USD</button>
+                <button onclick="selectAsset('ETH-USD')" id="btn-eth" class="asset-btn px-3 py-1 text-xs font-medium rounded-r-lg border border-slate-700 bg-slate-800 text-slate-200">ETH/USD</button>
+            </div>
+
+            <div class="h-4 w-px bg-slate-700"></div>
+
+            <span class="text-xs uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1">
+                <i class="fa-solid fa-globe text-cyan-400"></i> Forex:
+            </span>
+            <div class="inline-flex rounded-md shadow-sm">
+                <button onclick="selectAsset('EURUSD=X')" id="btn-eur" class="asset-btn px-3 py-1 text-xs font-medium rounded-l-lg border border-slate-700 bg-slate-800 text-slate-200">EUR/USD</button>
+                <button onclick="selectAsset('GBPUSD=X')" id="btn-gbp" class="asset-btn px-3 py-1 text-xs font-medium rounded-r-lg border border-slate-700 bg-slate-800 text-slate-200">GBP/USD</button>
+            </div>
+        </div>
+
+        <div class="text-xs font-mono text-slate-400">
+            <span>Risk Rule: <strong class="text-emerald-400">0.25% Max</strong> • Target: <strong class="text-cyan-400">≥ 2.0R</strong></span>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Chart Section (8 cols) -->
+        <section class="lg:col-span-8 flex flex-col space-y-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex-1 flex flex-col min-h-[520px]">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex items-center space-x-3">
+                        <span id="chart-symbol-title" class="text-base font-bold text-white">BTC/USD (15m)</span>
+                        <span id="chart-price-badge" class="text-xs font-mono font-bold px-2.5 py-1 bg-slate-800 border border-slate-700 rounded text-emerald-400">$83,040.50</span>
+                        <span class="text-xs font-semibold px-2 py-0.5 bg-cyan-950/60 border border-cyan-700/50 text-cyan-300 rounded">
+                            <i class="fa-solid fa-crosshairs mr-1"></i> <span id="detected-pattern-title">ABCD Harmonic Setup</span>
+                        </span>
+                    </div>
+                    <div class="text-xs font-mono text-slate-400">
+                        <span class="text-purple-400 mr-2">● EMA 9</span>
+                        <span class="text-rose-400">● EMA 20</span>
+                    </div>
+                </div>
+
+                <div id="chart-div" class="w-full flex-1 min-h-[440px]"></div>
+            </div>
+        </section>
+
+        <!-- Sidebar (4 cols) -->
+        <section class="lg:col-span-4 flex flex-col space-y-4">
+
+            <!-- Card 1: AI Trade Advisor -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-robot text-emerald-400"></i> AI Trade Advisor
+                    </h2>
+                    <span id="ai-action-badge" class="px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-emerald-950 border border-emerald-600 text-emerald-400">
+                        BUY • ABCD PATTERN
+                    </span>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                    <div class="p-3 bg-slate-950/70 border border-slate-800 rounded-lg">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-slate-400">AI Continuation Confidence:</span>
+                            <span id="ai-confidence" class="font-bold text-emerald-400 font-mono">78.3%</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Reward-to-Risk Payout:</span>
+                            <span id="ai-payout" class="font-bold text-cyan-400 font-mono">2.25R (Target: ≥ 2.0R)</span>
+                        </div>
+                    </div>
+
+                    <!-- Price Plan -->
+                    <div class="grid grid-cols-2 gap-2 font-mono text-xs">
+                        <div class="bg-slate-800/40 p-2 rounded border border-slate-800">
+                            <span class="text-slate-400 block text-[10px]">Entry Price</span>
+                            <span id="ai-entry" class="font-bold text-white">$83,040.50</span>
+                        </div>
+                        <div class="bg-rose-950/20 p-2 rounded border border-rose-900/40">
+                            <span class="text-rose-400 block text-[10px]">Stop Loss (ATR)</span>
+                            <span id="ai-stop" class="font-bold text-rose-400">$81,850.00</span>
+                        </div>
+                        <div class="bg-emerald-950/20 p-2 rounded border border-emerald-900/40">
+                            <span class="text-emerald-400 block text-[10px]">Target 1 (50% Out)</span>
+                            <span id="ai-t1" class="font-bold text-emerald-400">$85,718.00</span>
+                        </div>
+                        <div class="bg-cyan-950/20 p-2 rounded border border-cyan-900/40">
+                            <span class="text-cyan-400 block text-[10px]">Target 2 (Runner)</span>
+                            <span id="ai-t2" class="font-bold text-cyan-400">$87,900.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Position Sizing -->
+                    <div class="p-2.5 bg-emerald-950/10 border border-emerald-800/30 rounded-lg text-xs">
+                        <div class="flex justify-between mb-1">
+                            <span class="text-slate-400">Exact Position Size:</span>
+                            <span id="ai-size" class="font-bold text-emerald-300 font-mono">0.0210 BTC</span>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400">
+                            <span>Risk Allocated:</span>
+                            <span class="font-mono text-slate-300">$25.00 (0.25% of $10,000)</span>
+                        </div>
+                    </div>
+
+                    <p id="ai-rationale" class="text-xs text-slate-400 italic">
+                        Confirmed higher low at Point C (0.50 Fib pullback) with RVOL 1.94x breakout volume.
+                    </p>
+
+                    <button id="btn-execute" onclick="alert('Trade executed in Paper Broker simulator! Stop Loss and 50% scale-out armed.')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-bolt"></i> Execute Paper Trade
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card 2: Calibrator & Model Stats -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-brain text-purple-400"></i> Movement Learner Profile
+                    </h2>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-700 font-mono">
+                        PyTorch + GB
+                    </span>
+                </div>
+
+                <div class="space-y-2.5 text-xs font-mono">
+                    <div class="flex justify-between p-2 rounded bg-slate-950/70 border border-slate-800">
+                        <span class="text-slate-400">Trained Quality Trades:</span>
+                        <span id="stat-trades" class="text-purple-300 font-bold">1,086 Trades</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded bg-slate-950/70 border border-slate-800">
+                        <span class="text-slate-400">Calibrated ATR Stop Mult:</span>
+                        <span id="stat-stop" class="text-purple-300 font-bold">2.11x ATR</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded bg-slate-950/70 border border-slate-800">
+                        <span class="text-slate-400">Calibrated RVOL Trigger:</span>
+                        <span id="stat-rvol" class="text-purple-300 font-bold">1.94x</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded bg-slate-950/70 border border-slate-800">
+                        <span class="text-slate-400">24/7 Autonomous Auto-Train:</span>
+                        <span class="text-emerald-400 font-bold flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active (6h cycle)
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-950 border-t border-slate-800/80 px-6 py-4 text-center text-xs text-slate-500">
+        ElderAlpha AI • Educational Algorithmic Trading Assistant based on Andrew Elder: Day Trading Strategies (Book 2) •
+        <a href="https://github.com/sangeethhk/trade_helper" target="_blank" class="text-cyan-400 hover:underline ml-1">GitHub Repo</a>
+    </footer>
+
+    <script>
+        let currentAsset = 'BTC-USD';
+        let isSimulatedNews = false;
+
+        const assetData = {
+            'BTC-USD': {
+                name: 'BTC/USD (15m)',
+                price: 83040.50,
+                priceStr: '$83,040.50',
+                entry: 83040.50,
+                stop: 81850.00,
+                t1: 85718.00,
+                t2: 87900.00,
+                size: '0.0210 BTC',
+                confidence: '78.3%',
+                payout: '2.25R',
+                pattern: 'ABCD Harmonic Setup',
+                trades: '1,086 Quality Trades',
+                stopMult: '2.11x ATR',
+                rvol: '1.94x',
+                basePrice: 83000
+            },
+            'ETH-USD': {
+                name: 'ETH/USD (15m)',
+                price: 3450.25,
+                priceStr: '$3,450.25',
+                entry: 3450.25,
+                stop: 3380.00,
+                t1: 3600.00,
+                t2: 3750.00,
+                size: '0.356 ETH',
+                confidence: '75.5%',
+                payout: '2.14R',
+                pattern: 'Bull Flag Momentum',
+                trades: '1,275 Quality Trades',
+                stopMult: '2.08x ATR',
+                rvol: '1.88x',
+                basePrice: 3450
+            },
+            'EURUSD=X': {
+                name: 'EUR/USD (15m)',
+                price: 1.08500,
+                priceStr: '1.08500',
+                entry: 1.08500,
+                stop: 1.08250,
+                t1: 1.09050,
+                t2: 1.09500,
+                size: '0.10 Lots (10,000 units)',
+                confidence: '53.6%',
+                payout: '2.20R',
+                pattern: 'Channel Boundary Bounce',
+                trades: '100 Quality Trades',
+                stopMult: '1.37x ATR',
+                rvol: '1.65x',
+                basePrice: 1.085
+            },
+            'GBPUSD=X': {
+                name: 'GBP/USD (15m)',
+                price: 1.29450,
+                priceStr: '1.29450',
+                entry: 1.29450,
+                stop: 1.29150,
+                t1: 1.30100,
+                t2: 1.30600,
+                size: '0.08 Lots (8,000 units)',
+                confidence: '58.2%',
+                payout: '2.17R',
+                pattern: 'Floor Pivot S1 Reversal',
+                trades: '359 Quality Trades',
+                stopMult: '1.45x ATR',
+                rvol: '1.70x',
+                basePrice: 1.294
+            }
+        };
+
+        function selectAsset(symbol) {
+            currentAsset = symbol;
+            document.querySelectorAll('.asset-btn').forEach(b => b.classList.remove('active-asset'));
+            if (symbol === 'BTC-USD') document.getElementById('btn-btc').classList.add('active-asset');
+            if (symbol === 'ETH-USD') document.getElementById('btn-eth').classList.add('active-asset');
+            if (symbol === 'EURUSD=X') document.getElementById('btn-eur').classList.add('active-asset');
+            if (symbol === 'GBPUSD=X') document.getElementById('btn-gbp').classList.add('active-asset');
+
+            const d = assetData[symbol];
+            document.getElementById('chart-symbol-title').innerText = d.name;
+            document.getElementById('chart-price-badge').innerText = d.priceStr;
+            document.getElementById('detected-pattern-title').innerText = d.pattern;
+            document.getElementById('ai-confidence').innerText = d.confidence;
+            document.getElementById('ai-payout').innerText = `${d.payout} (Target: ≥ 2.0R)`;
+            document.getElementById('ai-entry').innerText = d.priceStr;
+            document.getElementById('ai-stop').innerText = typeof d.stop === 'number' && d.stop < 10 ? d.stop.toFixed(5) : `$${d.stop.toFixed(2)}`;
+            document.getElementById('ai-t1').innerText = typeof d.t1 === 'number' && d.t1 < 10 ? d.t1.toFixed(5) : `$${d.t1.toFixed(2)}`;
+            document.getElementById('ai-t2').innerText = typeof d.t2 === 'number' && d.t2 < 10 ? d.t2.toFixed(5) : `$${d.t2.toFixed(2)}`;
+            document.getElementById('ai-size').innerText = d.size;
+            document.getElementById('stat-trades').innerText = d.trades;
+            document.getElementById('stat-stop').innerText = d.stopMult;
+            document.getElementById('stat-rvol').innerText = d.rvol;
+
+            renderChart(symbol);
+        }
+
+        function renderChart(symbol) {
+            const d = assetData[symbol];
+            const numCandles = 50;
+            const dates = [];
+            const opens = [];
+            const highs = [];
+            const lows = [];
+            const closes = [];
+            const ema9 = [];
+            const ema20 = [];
+
+            let price = d.basePrice;
+            const now = new Date();
+
+            for (let i = numCandles; i >= 0; i--) {
+                const dt = new Date(now.getTime() - (i * 15 * 60 * 1000));
+                dates.push(dt);
+                const delta = (Math.random() - 0.48) * (price * 0.005);
+                const open = price;
+                const close = price + delta;
+                const high = Math.max(open, close) + Math.random() * (price * 0.003);
+                const low = Math.min(open, close) - Math.random() * (price * 0.003);
+                opens.push(open);
+                highs.push(high);
+                lows.push(low);
+                closes.push(close);
+                price = close;
+            }
+
+            // Generate EMAs
+            for (let i = 0; i < closes.length; i++) {
+                ema9.push(closes[i] * 0.999);
+                ema20.push(closes[i] * 0.997);
+            }
+
+            const traceCandles = {
+                x: dates,
+                open: opens,
+                high: highs,
+                low: lows,
+                close: closes,
+                type: 'candlestick',
+                increasing: { line: { color: '#10b981' } },
+                decreasing: { line: { color: '#ef4444' } },
+                name: symbol
+            };
+
+            const traceEma9 = {
+                x: dates,
+                y: ema9,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#c084fc', width: 1.5 },
+                name: 'EMA 9'
+            };
+
+            const traceEma20 = {
+                x: dates,
+                y: ema20,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#f43f5e', width: 1.5 },
+                name: 'EMA 20'
+            };
+
+            const layout = {
+                paper_bgcolor: '#0b0f19',
+                plot_bgcolor: '#0b0f19',
+                margin: { l: 25, r: 50, t: 10, b: 30 },
+                showlegend: false,
+                xaxis: {
+                    type: 'date',
+                    rangeslider: { visible: false },
+                    color: '#94a3b8',
+                    gridcolor: '#1e293b'
+                },
+                yaxis: {
+                    color: '#94a3b8',
+                    gridcolor: '#1e293b',
+                    side: 'right'
+                }
+            };
+
+            Plotly.newPlot('chart-div', [traceCandles, traceEma9, traceEma20], layout, { responsive: true, displayModeBar: false });
+        }
+
+        function toggleNewsSimulation() {
+            isSimulatedNews = !isSimulatedNews;
+            const banner = document.getElementById('news-alert-banner');
+            const badge = document.getElementById('news-badge');
+            const dot = document.getElementById('news-dot');
+            const badgeText = document.getElementById('news-badge-text');
+            const headline = document.getElementById('news-headline');
+            const simBtnText = document.getElementById('sim-btn-text');
+            const actionBadge = document.getElementById('ai-action-badge');
+            const execBtn = document.getElementById('btn-execute');
+            const rationale = document.getElementById('ai-rationale');
+
+            if (isSimulatedNews) {
+                banner.className = "bg-rose-950/90 border-b border-rose-700 px-6 py-2 transition-all duration-300 shadow-lg";
+                badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-rose-900 text-rose-200 flex items-center gap-1.5 border border-rose-500 animate-pulse";
+                dot.className = "w-2 h-2 rounded-full bg-rose-400 animate-ping";
+                badgeText.innerText = "🚨 HIGH-IMPACT NEWS BLACKOUT";
+                headline.innerHTML = "<strong class='text-rose-200'>US Non-Farm Payrolls (NFP) Shock Alert</strong> • <span class='text-rose-300'>Active (15m Blackout)</span> • <span class='text-white underline'>All trade signals automatically SKIPPED to protect capital</span>";
+                simBtnText.innerText = "Clear News Shock";
+
+                actionBadge.innerText = "🚨 SKIPPED (NEWS BLACKOUT)";
+                actionBadge.className = "px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-rose-950 border border-rose-600 text-rose-300 animate-pulse";
+                rationale.innerText = "🚨 TRADE SKIPPED: High-impact economic news alert in progress. Elder Rule: Step aside to avoid violent slippage and spread spikes.";
+                execBtn.disabled = true;
+                execBtn.innerHTML = "<i class='fa-solid fa-ban'></i> Trade Blocked (News Blackout)";
+                execBtn.className = "w-full bg-slate-800 text-rose-400 font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider border border-rose-900/50 cursor-not-allowed flex items-center justify-center gap-2";
+            } else {
+                banner.className = "bg-slate-950 border-b border-slate-800 px-6 py-2 transition-all duration-300";
+                badge.className = "px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 flex items-center gap-1.5 border border-slate-700";
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                badgeText.innerText = "Economic News: Calm";
+                headline.innerText = "Economic calendar clear. No high-impact blackout in progress.";
+                simBtnText.innerText = "Simulate High-Impact News Shock";
+
+                actionBadge.innerText = "BUY • ABCD PATTERN";
+                actionBadge.className = "px-3 py-1 rounded text-xs font-bold uppercase tracking-wider bg-emerald-950 border border-emerald-600 text-emerald-400";
+                rationale.innerText = "Confirmed higher low at Point C (0.50 Fib pullback) with RVOL 1.94x breakout volume.";
+                execBtn.disabled = false;
+                execBtn.innerHTML = "<i class='fa-solid fa-bolt'></i> Execute Paper Trade";
+                execBtn.className = "w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg text-xs uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2 cursor-pointer";
+            }
+        }
+
+        window.onload = () => selectAsset('BTC-USD');
+    </script>
+</body>
+</html>

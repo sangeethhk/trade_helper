@@ -67,14 +67,44 @@ class TradingCoordinator:
         risk_calc = {}
         active_signal: Optional[TradeSignal] = None
 
+        # Multi-Timeframe Trend Confirmation (Elder Triple Screen Method)
+        htf_trend = "NEUTRAL"
+        if timeframe in ["1m", "5m", "15m"]:
+            try:
+                htf_df = load_market_data(symbol, "1h")
+                if len(htf_df) >= 20:
+                    htf_ema9 = htf_df['ema9'].iloc[-1] if 'ema9' in htf_df else htf_df['close'].ewm(span=9).mean().iloc[-1]
+                    htf_ema20 = htf_df['ema20'].iloc[-1] if 'ema20' in htf_df else htf_df['close'].ewm(span=20).mean().iloc[-1]
+                    htf_trend = "BULLISH" if htf_ema9 > htf_ema20 else "BEARISH"
+            except Exception:
+                htf_trend = "NEUTRAL"
+
         if detected_pattern:
             risk_calc = sizer.calculate_size(symbol, detected_pattern.entry_price, detected_pattern.stop_loss)
             
             # Combine pattern confidence with AI movement prediction
             ai_p = movement_prediction.get("continuation_probability", 0.5)
-            combined_confidence = round((detected_pattern.confidence_score * 0.6) + (ai_p * 0.4), 2)
+            base_conf = detected_pattern.confidence_score
 
-            action = ActionType.BUY if detected_pattern.direction == Direction.BULLISH else ActionType.SELL
+            # Multi-Timeframe Alignment Boost/Penalty (Elder Triple Screen)
+            htf_aligned = (detected_pattern.direction == Direction.BULLISH and htf_trend == "BULLISH") or \
+                          (detected_pattern.direction == Direction.BEARISH and htf_trend == "BEARISH")
+            
+            if htf_aligned:
+                base_conf = min(0.95, base_conf + 0.08)
+            elif htf_trend != "NEUTRAL":
+                base_conf = max(0.40, base_conf - 0.12)
+
+            combined_confidence = round((base_conf * 0.6) + (ai_p * 0.4), 2)
+
+            # High-Accuracy Quality Threshold (Elder Rule: Only take trades with institutional edge)
+            if combined_confidence >= 0.58:
+                action = ActionType.BUY if detected_pattern.direction == Direction.BULLISH else ActionType.SELL
+                sig_rationale = detected_pattern.rationale + (f" • [1h Trend: {htf_trend} Aligned]" if htf_aligned else "")
+            else:
+                action = ActionType.HOLD
+                sig_rationale = f"Setup detected ({detected_pattern.pattern_type.value}), but overall conviction ({int(combined_confidence*100)}%) is below institutional threshold. Holding to protect capital."
+
             active_signal = TradeSignal(
                 symbol=symbol,
                 timestamp=detected_pattern.timestamp,
@@ -89,7 +119,7 @@ class TradingCoordinator:
                 units_label=risk_calc.get("display_label", "Units"),
                 confidence=combined_confidence,
                 payout_ratio=detected_pattern.risk_reward_ratio,
-                rationale=detected_pattern.rationale,
+                rationale=sig_rationale,
                 calibration_applied=True
             )
 
@@ -121,6 +151,7 @@ class TradingCoordinator:
             "calibration": calibration.model_dump(),
             "movement_ai": movement_prediction,
             "options_advisory": options_guidance,
+            "htf_trend": htf_trend,
             "event_lockout": event_status,
             "news_alert": event_status,
             "broker_events": broker_events,
